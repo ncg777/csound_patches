@@ -1,0 +1,5 @@
+call csound "d:/Music making/mus_csound/tetrahedron_tape_mixer.csd" --smacro:length=4778 --smacro:prefix="D:/Music making/mixettes/2016.04.19/base/1" --smacro:th=50 --smacro:ph=200  -o "D:/Music making/mixettes/2016.04.19/wav/1.wav"
+call csound "d:/Music making/mus_csound/tetrahedron_tape_mixer.csd" --smacro:length=4778 --smacro:prefix="D:/Music making/mixettes/2016.04.19/base/2" --smacro:th=50 --smacro:ph=200  -o "D:/Music making/mixettes/2016.04.19/wav/2.wav"
+call csound "d:/Music making/mus_csound/tetrahedron_tape_mixer.csd" --smacro:length=4778 --smacro:prefix="D:/Music making/mixettes/2016.04.19/base/3" --smacro:th=50 --smacro:ph=200  -o "D:/Music making/mixettes/2016.04.19/wav/3.wav"
+call csound "d:/Music making/mus_csound/tetrahedron_tape_mixer.csd" --smacro:length=4778 --smacro:prefix="D:/Music making/mixettes/2016.04.19/base/4" --smacro:th=50 --smacro:ph=200  -o "D:/Music making/mixettes/2016.04.19/wav/4.wav"
+call csound "d:/Music making/mus_csound/tetrahedron_tape_mixer.csd" --smacro:length=4778 --smacro:prefix="D:/Music making/mixettes/2016.04.19/wav/" --smacro:th=200 --smacro:ph=800  -o "D:/Music making/mixettes/2016.04.19/wav/2016.04.19.wav"

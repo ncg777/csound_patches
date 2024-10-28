@@ -1,0 +1,43 @@
+﻿opcode notnum_to_spherical, kkk, k
+	knotn xin
+	km = knotn % (8*4)
+	kd = (knotn - km) / (8*4)
+	k1 = kd ; entre 0 et 3
+	
+	km2 = km % 8
+	kd2 = (km - km2) / 8
+	k2 = kd2 ; entre 0 et 3
+	k3 = km2 ; entre 0 et 7
+	
+	ktheta = k3*$M_PI/8
+	kphi = k2*$M_PI_2/4
+	
+	if (sin(ktheta)*cos(kphi))!=0 && (sin(ktheta)*sin(kphi))!=0 && cos(ktheta)!=0 then
+		kmaxrho minabs 1.0/(sin(ktheta)*cos(kphi)), 1.0/(sin(ktheta)*sin(kphi)), 1.0/cos(ktheta)
+	elseif (sin(ktheta)*cos(kphi))==0 && (sin(ktheta)*sin(kphi))!=0 && cos(ktheta)!=0 then
+		kmaxrho minabs 1.0/(sin(ktheta)*sin(kphi)), 1.0/cos(ktheta)	
+	elseif (sin(ktheta)*cos(kphi))!=0 && (sin(ktheta)*sin(kphi))==0 && cos(ktheta)!=0 then
+		kmaxrho minabs 1.0/(sin(ktheta)*cos(kphi)), 1.0/cos(ktheta)
+	elseif (sin(ktheta)*cos(kphi))!=0 && (sin(ktheta)*sin(kphi))!=0 && cos(ktheta)==0 then
+		kmaxrho minabs 1.0/(sin(ktheta)*cos(kphi)), 1.0/(sin(ktheta)*sin(kphi))
+	elseif (sin(ktheta)*cos(kphi))==0 && (sin(ktheta)*sin(kphi))==0 && cos(ktheta)!=0 then
+		kmaxrho = abs(1.0/cos(ktheta))
+	elseif (sin(ktheta)*cos(kphi))!=0 && (sin(ktheta)*sin(kphi))==0 && cos(ktheta)==0 then
+		kmaxrho = abs(1.0/(sin(ktheta)*cos(kphi)))
+	elseif (sin(ktheta)*cos(kphi))==0 && (sin(ktheta)*sin(kphi))!=0 && cos(ktheta)==0 then
+		kmaxrho = abs(1.0/(sin(ktheta)*sin(kphi)))
+	else
+		kmaxrho = 0
+	endif
+	
+	krho = ((k1+1.0)/4.0)*kmaxrho
+	
+	xout ktheta, kphi, krho
+endop
+
+opcode notnum_to_cart, kkk, k
+  knotn xin
+  kth, kphi, krho notnum_to_spherical
+  kx, ky, kz spher_to_cart kth, kphi, krho
+  xout kx, ky, kz
+endop

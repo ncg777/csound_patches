@@ -1,0 +1,1 @@
+csound --omacro:STEREOWAVE=\"$1\" random_trigger_skip_player.csd
