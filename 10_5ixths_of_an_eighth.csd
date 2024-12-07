@@ -26,7 +26,6 @@
 		i 1 0 3601 27.5 1.6666666666666666
 		e
 	</CsScore>
-
 </CsoundSynthesizer>
 
 <MacGUI>
