@@ -1,6 +1,6 @@
 <CsoundSynthesizer>
 	<CsOptions>
-	-o d:/10_5ixths_of_an_eighth.ogg
+	-o d:/10_5ixths_of_an_eighth.wav
 	</CsOptions>
 	<CsInstruments>
 		sr     = 48000
