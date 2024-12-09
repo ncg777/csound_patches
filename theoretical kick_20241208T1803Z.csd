@@ -1,6 +1,6 @@
 <CsoundSynthesizer>
 	<CsOptions>
-	-o d:/fm_20241207T2024Z.wav
+	-o "90 bpm 1 bar theoretical kick loop.wav"
 	</CsOptions>
 	<CsInstruments>
 		sr     = 48000
@@ -12,18 +12,32 @@
 			ifreq=p4
 			ilfofreq=p5
 			iamp = ampdb(89)
-			alfo oscil 1, ilfofreq, 1
-			a1 oscil3 iamp, ifreq*(1+((0.5+(alfo*0.475)))), 1
+			klfo oscil 1, ilfofreq, 2
+			alfo1 pow a(2.0), 3*klfo
+			a1 oscil3 iamp, ifreq*alfo1, 1
 	
 			out a1
 		endin
 	</CsInstruments>
 	<CsScore>
-		f 1 0 16384 10 4 2 1
-		i 1 0 3601 55 1.20833333333333333333333333333333
+		f 1 0 16384 10 1
+		f 2 0 16384 7 1 16384 -1
+		i 1 0 2.6666666666667 27.5 1.5
 		e
 	</CsScore>
 </CsoundSynthesizer>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
