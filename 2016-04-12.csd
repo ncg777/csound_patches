@@ -1,13 +1,8 @@
 <CsoundSynthesizer>
-
-
 <CsOptions>
 -o "d:/4mph 1.wav"
 </CsOptions>
-
-
 <CsInstruments>
-
 	sr     = 44100
 	kr     = 4410
 	ksmps  = 10
@@ -44,8 +39,6 @@
 	endin
 
 </CsInstruments>
-
-
 <CsScore>
 #define V30 #1.8834#
 #define V31 #1.9042742#
@@ -76,26 +69,3 @@
       i 3 0 $length [8*$V40] 0.125 65
 	e
 </CsScore>
-
-
-</CsoundSynthesizer>
-<bsbPanel>
- <label>Widgets</label>
- <objectName/>
- <x>100</x>
- <y>100</y>
- <width>320</width>
- <height>240</height>
- <visible>true</visible>
- <uuid/>
- <bgcolor mode="nobackground">
-  <r>255</r>
-  <g>255</g>
-  <b>255</b>
- </bgcolor>
-</bsbPanel>
-<bsbPresets>
-</bsbPresets>
-<MacGUI>
-ioView nobackground {65535, 65535, 65535}
-</MacGUI>
