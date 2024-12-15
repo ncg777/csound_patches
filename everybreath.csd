@@ -21,7 +21,7 @@
     schedkwhen ktrigger2, k(-1), k(-1), "tone", 0, idur, 320
     schedkwhen ktrigger3, k(-1), k(-1), "tone", 0, idur*0.25, 1600
 	endin
-  
+
 	instr tone
     aenv expseg 0.001,0.001*p3,1.0,0.999*p3,0.001
     a_mod oscil3 0.3, 3,1
