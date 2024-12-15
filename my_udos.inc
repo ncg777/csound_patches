@@ -1,4 +1,11 @@
- opcode trigger_counter, a, ai
+opcode noiseband, a, kk
+	kfreq, kbw xin
+	anoise noise 1.0, 0.0
+	af butbp anoise, kfreq, kbw
+	xout af
+endop
+
+opcode trigger_counter, a, ai
     a_trigger, i_n xin
     a_i init 0
     a_n init 0
@@ -169,7 +176,6 @@ opcode strat, aa, aaa
 	xout a1, a2 ; a1 and a2 in [0,1]
 endop
 
-
 opcode spher_to_cart, kkk, kkk
 	ktheta, kphi, krho xin
 	kx = krho*sin(ktheta)*cos(kphi)
@@ -190,8 +196,6 @@ opcode frequency_activation, k, aiiii
     
     xout k_trigger
 endop
-
-
 
 opcode trigger_monitor, kkkk, ki
   k_trigger0, i_active_duration xin
@@ -220,77 +224,3 @@ opcode trigger_activated_switch, k, k
   k_switch integ ((1.0-k_switch)*k_activation) -(k_switch*k_activation)
   xout k_switch
 endop
-
-opcode FastICA, aa, aa
-  a1, a2 xin  ; Input audio signals
-
-  ; Centering (mean adjustment)
-  a1  =  a1 - mean(a1)
-  a2  =  a2 - mean(a2)
-
-  ; Whitening step would be handled externally (not implemented here)
-
-  ; Initialize weight matrix
-  k11  init  1
-  k12  init  0
-  k21  init  0
-  k22  init  1
-
-  ; Declare previous weights
-  k11_prev  init  0
-  k12_prev  init  0
-
-  ; Convergence criterion
-  kthresh  =  0.0001
-  kcount  init  0
-  kmaxiter  =  1000
-
-  loop:
-    ; FastICA iteration
-    a_y1  =  k11 * a1 + k12 * a2
-    a_y2  =  k21 * a1 + k22 * a2
-
-    ; Symmetric decorrelation (approximation)
-    k11  =  (k11 - (a_y1^2 * k11 - a_y1 * a_y2 * k21)) / (1 + k11^2)
-    k12  =  (k12 - (a_y1^2 * k12 - a_y1 * a_y2 * k22)) / (1 + k12^2)
-    k21  =  (k21 - (a_y2^2 * k21 - a_y1 * a_y2 * k11)) / (1 + k21^2)
-    k22  =  (k22 - (a_y2^2 * k22 - a_y1 * a_y2 * k12)) / (1 + k22^2)
-
-    ; Normalize weight matrix (approximation)
-    k11  =  k11 / sqrt(k11^2 + k12^2)
-    k12  =  k12 / sqrt(k11^2 + k12^2)
-    k21  =  k21 / sqrt(k21^2 + k22^2)
-    k22  =  k22 / sqrt(k21^2 + k22^2)
-
-    ; Orthogonalization (optional, could be improved)
-    k11  =  k11 - k21 * (k11 * k21 + k12 * k22)
-    k12  =  k12 - k22 * (k11 * k21 + k12 * k22)
-
-    ; Check convergence
-    if  (kcount > 0 && sqrt((k11 - k11_prev)^2 + (k12 - k12_prev)^2) < kthresh || kcount >= kmaxiter)  goto done
-
-    ; Store previous weights after checking convergence
-    k11_prev  =  k11
-    k12_prev  =  k12
-
-    ; Increment loop counter
-    kcount  +=  1
-
-  done:
-  ; Output separated sources
-  xout a_y1, a_y2
-endop
-
-opcode CocktailPartyFilter, aa, aa
-  a1, a2 xin
-
-  ; Separate mixed signals using FastICA
-  a_separated1, a_separated2 FastICA a1, a2
-
-  ; Optional post-processing
-  a_separated1 = a_separated1 * 0.5
-  a_separated2 = a_separated2 * 0.5
-
-  xout a_separated1, a_separated2
-endop
-

@@ -1,18 +1,17 @@
 <CsoundSynthesizer>
-
-
 <CsOptions>
 -o dac
 </CsOptions>
 
-
 <CsInstruments>
 
-	sr     = 44100
-	kr     = 4410
+	sr     = 48000
+	kr     = 4800
 	ksmps  = 10
 	nchnls = 2
-#include "D:/Music making/mus_csound/my_udos.inc"
+	
+	#include "my_udos.inc"
+	
 	instr 1
 		al init 0
 		ar init 0
@@ -38,11 +37,8 @@
 	endin
 
 	instr 2
-
 		iamp=p6/5
 		
-
-
 		kfr1=p4
 		kfr2=(p4)*(2^(2/12))
 		kfr3=(p4)*(2^(4/12))
@@ -66,12 +62,8 @@
 
 		amixl=(a1l+a2l+a3l+a4l+a5l)*iamp
 		amixr=(a1r+a2r+a3r+a4r+a5r)*iamp
-		/*
-		amixl butterlp amixl, kf
-		amixr butterlp amixr, kf	
-		*/
-		outs amixl, amixr
 
+		outs amixl, amixr
 	endin
 	
 	instr 3
@@ -80,7 +72,6 @@
 		iamp = p6
 		alfo oscil 1, ilfofreq, 2
 		alfo = alfo*alfo*alfo
-		/* a1 noiseband ifreq, iband */
 		a1 oscil3 iamp, ifreq, 1
 		al=a1*alfo
 		ar=a1*alfo
@@ -88,9 +79,7 @@
 		outs al, ar
 	endin
 	
-
 	instr 4
-
 		a1 noiseband p4-p6, p5
 		a2 noiseband p4+p6, p5
 
@@ -99,10 +88,7 @@
 
 		outs a1, a2
 	endin
-
-
 </CsInstruments>
-
 
 <CsScore>
 	f 1 0 16384 10 16 8 4 2
@@ -114,8 +100,6 @@
 	i 4 0 3600 440 110 -4 11000
 	e
 </CsScore>
-
-
 </CsoundSynthesizer>
 <bsbPanel>
  <label>Widgets</label>
@@ -134,6 +118,3 @@
 </bsbPanel>
 <bsbPresets>
 </bsbPresets>
-<MacGUI>
-ioView nobackground {65535, 65535, 65535}
-</MacGUI>
