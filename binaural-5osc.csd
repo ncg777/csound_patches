@@ -1,25 +1,15 @@
 <CsoundSynthesizer>
-
-
 <CsOptions>
 -o DAC
 </CsOptions>
-
-
 <CsInstruments>
-
-	sr     = 44100
-	kr     = 4410
+	sr     = 48000
+	kr     = 4800
 	ksmps  = 10
 	nchnls = 2
 
 	instr 1
-
 		iamp=0dbfs/5
-		
-		/* kf=700 */
-
-
 		
 		kj jitter 1.0, 0.01, 0.1
 		kj=(kj^3)*p4/2.0
@@ -63,26 +53,17 @@
 
 		amixl=(a1l+a2l+a3l+a4l+a5l)*iamp
 		amixr=(a1r+a2r+a3r+a4r+a5r)*iamp
-		/*
-		amixl butterlp amixl, kf
-		amixr butterlp amixr, kf	
-		*/
+
 		outs amixl, amixr
 
 	endin
-
-
 </CsInstruments>
-
-
 <CsScore>
 	f 1 0 16384 10 1
 
 	i 1 0 2700 330 10
 	e
 </CsScore>
-
-
 </CsoundSynthesizer>
 <bsbPanel>
  <label>Widgets</label>
@@ -101,6 +82,3 @@
 </bsbPanel>
 <bsbPresets>
 </bsbPresets>
-<MacGUI>
-ioView nobackground {65535, 65535, 65535}
-</MacGUI>
