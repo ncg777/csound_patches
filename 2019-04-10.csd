@@ -3018,24 +3018,6 @@ i   1   1497.5067   0.9733  -0.9106  $W  [$LEN*0.63882723] 0.52817380 0.50146048
 i   1   1497.9933   0.9762  1.1767  $W  [$LEN*0.46073630] 0.49854378 0.54821188
 i   1   1498.4814   1.0703  -1.0537  $W  [$LEN*0.80375571] 0.45602806 0.44564981
 i   1   1499.0165   0.9539  -1.1195  $W  [$LEN*0.44113179] 0.56097859 0.54208671
-
 	e
 </CsScore>
 </CsoundSynthesizer>
-<bsbPanel>
- <label>Widgets</label>
- <objectName/>
- <x>100</x>
- <y>100</y>
- <width>320</width>
- <height>240</height>
- <visible>true</visible>
- <uuid/>
- <bgcolor mode="nobackground">
-  <r>255</r>
-  <g>255</g>
-  <b>255</b>
- </bgcolor>
-</bsbPanel>
-<bsbPresets>
-</bsbPresets>
