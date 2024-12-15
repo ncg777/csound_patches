@@ -14,7 +14,7 @@
 	ksmps  = 10
 	nchnls = 2
 
-#include "D:/Music making/mus_csound/my_udos.inc"
+#include "my_udos.inc"
 
 	instr 1
 		ifreq=p4

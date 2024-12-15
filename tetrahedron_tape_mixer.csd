@@ -1,13 +1,11 @@
 <CsoundSynthesizer>
-
 <CsInstruments>
-
 	sr     = 44100
 	kr     = 4410
 	ksmps  = 10
 	nchnls = 2
 	
-#include "D:/Music making/mus_csound/my_udos.inc"
+#include "my_udos.inc"
 
 	instr 1
 	  
@@ -30,10 +28,7 @@
 	  	
 	  outs aml*iamp, amr*iamp
 	endin
-
 </CsInstruments>
-
-
 <CsScore>
 
 	f 1 0 16384 10 1
@@ -45,8 +40,6 @@
              
 	e
 </CsScore>
-
-
 </CsoundSynthesizer>
 <bsbPanel>
  <label>Widgets</label>
@@ -65,6 +58,3 @@
 </bsbPanel>
 <bsbPresets>
 </bsbPresets>
-<MacGUI>
-ioView nobackground {65535, 65535, 65535}
-</MacGUI>

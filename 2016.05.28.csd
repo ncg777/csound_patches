@@ -11,7 +11,7 @@
 	ksmps  = 10
 	nchnls = 1
 	 inchnls=1
-#include "D:/Music making/mus_csound/my_udos.inc"
+#include "my_udos.inc"
              alwayson "PowerOf2Taps"
 	instr PowerOf2Taps
 	   a_in in

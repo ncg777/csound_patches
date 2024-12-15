@@ -12,7 +12,7 @@
 	kr     = 4410
 	ksmps  = 10
 	nchnls = 2
-#include "D:/Music making/mus_csound/my_udos.inc"
+#include "my_udos.inc"
 
 	instr 1
 	  aenv adsr p3*p7,0,1.0,p3*p8
