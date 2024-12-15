@@ -9,7 +9,6 @@
 	ksmps  = 441
 	nchnls = 1
 
-
   instr Sequencer
     k_amp linseg 0, p4, 1, p5, 1, p6, 0
 
@@ -27,7 +26,6 @@
     schedkwhen ktrigger1, k(-1), k(-1), "tone1", 0, idur, floor(kosc1%i_k), k_amp
   endin
 
-
   instr tone1
     iC1 = $C1
     iC2 = $C2
@@ -41,8 +39,6 @@
     out a0*aenv*(0.7+a_mod)*p5*ampdb(-12)*0dbfs
   endin
 </CsInstruments>
-
-
 <CsScore>
   
 	f 1 0 16384 10 1
@@ -53,26 +49,4 @@
         i "Sequencer" 0 [$FADEIN+$SUSTAIN+$FADEOUT] $FADEIN $SUSTAIN $FADEOUT
 	e
 </CsScore>
-
-
 </CsoundSynthesizer>
-<bsbPanel>
- <label>Widgets</label>
- <objectName/>
- <x>100</x>
- <y>100</y>
- <width>320</width>
- <height>240</height>
- <visible>true</visible>
- <uuid/>
- <bgcolor mode="nobackground">
-  <r>255</r>
-  <g>255</g>
-  <b>255</b>
- </bgcolor>
-</bsbPanel>
-<bsbPresets>
-</bsbPresets>
-<MacGUI>
-ioView nobackground {65535, 65535, 65535}
-</MacGUI>
