@@ -1,13 +1,8 @@
 <CsoundSynthesizer>
-
-
 <CsOptions>
--o "d:/2019-04-10.wav"
+-o "2019-04-10.wav"
 </CsOptions>
-
-
 <CsInstruments>
-
 	sr     = 44100
 	kr     = 4410
 	ksmps  = 10
@@ -19,12 +14,9 @@
 	  aL, aR diskin p5, p4, p6, 1
 	  outs aL*aenv,aR*aenv
 	endin
-
 </CsInstruments>
-
-
 <CsScore>
-#define W #"D:/Music making/mus_csound/snd_39.wav"#
+#define W #"snd_39.wav"#
 #define LEN #410#
 
 	f 1 0 16384 10 1
@@ -3029,8 +3021,6 @@ i   1   1499.0165   0.9539  -1.1195  $W  [$LEN*0.44113179] 0.56097859 0.54208671
 
 	e
 </CsScore>
-
-
 </CsoundSynthesizer>
 <bsbPanel>
  <label>Widgets</label>
@@ -3049,6 +3039,3 @@ i   1   1499.0165   0.9539  -1.1195  $W  [$LEN*0.44113179] 0.56097859 0.54208671
 </bsbPanel>
 <bsbPresets>
 </bsbPresets>
-<MacGUI>
-ioView nobackground {65535, 65535, 65535}
-</MacGUI>
