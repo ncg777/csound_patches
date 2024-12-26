@@ -57,12 +57,14 @@
 	endin
 </CsInstruments>
 <CsScore>
-	f 1 0 16384 10 1 2 4
+	f 1 0 16384 10 2 1
 
 	i 1 0 600 65.40639133 0.1333333333333333333333333333
 	e
 </CsScore>
 </CsoundSynthesizer>
+
+
 
 
 
