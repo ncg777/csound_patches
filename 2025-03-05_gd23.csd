@@ -1,6 +1,6 @@
 <CsoundSynthesizer>
 	<CsOptions>
-	-o "d:/2023-03-05_gd23.wav"
+	-o "d:/2023-03-05_gd23-2.wav"
 	</CsOptions>
 	<CsInstruments>
 		sr     = 48000
@@ -18,11 +18,13 @@
 	</CsInstruments>
 	<CsScore>
 		f 1 0 16384 10 1
-		i 1 0 3600 49.96875
-		i 1 0 3600 112.03125
+		i 1 0 3600 6.24609375
+		i 1 0 3600 9.3359375
 		e
 	</CsScore>
 </CsoundSynthesizer>
+
+
 
 
 
