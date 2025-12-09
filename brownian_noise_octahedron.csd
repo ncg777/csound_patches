@@ -1,7 +1,7 @@
 <CsoundSynthesizer>
 
 <CsOptions>
--o "g:/2016.05.24-1.wav"
+-o dac
 </CsOptions>
 
 <CsInstruments>
@@ -77,10 +77,10 @@
 
 <CsScore>
 #define length #3600#
-#define f #40#
-#define b #0.35#
-#define w #0.04#
-#define tp #0.001#
+#define f #15#
+#define b #0.5#
+#define w #0.025#
+#define tp #0.003125#
 
 #define amp #86#
 
@@ -89,7 +89,7 @@
 	f 3 0 16384 27 0 1 8192 -1 16384 1
 	f 4 0 16384 27 0 1 8191 1 8192 -1 16384 -1
 	
-	{8 MULT									  				
+	{9 MULT									  				
 		i 3 0 $length $b [$f * ($MULT + 1)] $w $tp [$tp * 4] $amp
 	}	
       
@@ -98,6 +98,17 @@
 
 
 </CsoundSynthesizer>
+
+
+<MacGUI>
+ioView nobackground {65535, 65535, 65535}
+</MacGUI>
+
+
+
+
+
+
 <bsbPanel>
  <label>Widgets</label>
  <objectName/>
@@ -115,6 +126,3 @@
 </bsbPanel>
 <bsbPresets>
 </bsbPresets>
-<MacGUI>
-ioView nobackground {65535, 65535, 65535}
-</MacGUI>
