@@ -8,7 +8,7 @@ setlocal enabledelayedexpansion
 set TEMPLATE=evolving_drone_template.csd
 set TMPFILE=%TEMP%\drone_realtime_%RANDOM%.csd
 
-:: Duration in seconds (default: 120 for longer evolving soundscape)
+:: Duration in seconds
 if "%~1"=="" (
     set DURATION=600
 ) else (
@@ -19,13 +19,14 @@ if "%~1"=="" (
 set /a SEED=%RANDOM% * 32768 + %RANDOM%
 
 echo ============================================
-echo   Vectorial Evolving Drone - Real-time
+echo   Meta-Vectorial Evolving Drone - Real-time
 echo ============================================
 echo Duration: %DURATION% seconds
 echo Seed:     %SEED%
 echo.
-echo 8 drone sources with vec8 crossfading
-echo 3 LFOs control X/Y/Z morphing axes
+echo 8 drone groups x 4 voices = 32 total voices
+echo Each group: random root note + random chord
+echo Ultra-slow chaotic vec8 morphing between groups
 echo ============================================
 echo Press Ctrl+C to stop playback
 echo.

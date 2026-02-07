@@ -63,11 +63,49 @@ opcode vec8, a, aaaaaaaakkk
 endop
 
 ; ---------------------------
+; Chord interval pool & per-group root note storage
+; ---------------------------
+; Consonant intervals only: unison, P4, P5, octave
+giIntervals ftgen 0, 0, -4, -2,  0, 5, 7, 12
+
+; 5-35 pentatonic degrees in semitones (relative to tonic)
+; Forte set class 5-35.05 [0,2,5,7,9]
+giScaleDegrees ftgen 0, 0, -5, -2,  0, 2, 5, 7, 9
+
+; Table to hold 8 random root MIDI notes (filled by instr 99)
+giGroupRoots ftgen 0, 0, -8, -2,  0, 0, 0, 0, 0, 0, 0, 0
+
+; ---------------------------
+; Instrument 99: Initialization
+; Picks one random tonic, then assigns group roots
+; from 6-z48 hexachord built on that tonic.
+; Groups are spread across 2 octaves for range.
+; ---------------------------
+instr 99
+    seed p4
+    ; Random tonic: MIDI 12 (C-1) to 23 (B-1)
+    iTonic random 12, 24
+    iTonic = int(iTonic)
+    iScaleLen = ftlen(giScaleDegrees)
+    iIdx = 0
+    while (iIdx < 8) do
+        ; Pick a 5-35 degree (cycle through with octave shifts)
+        iDegIdx = iIdx % iScaleLen
+        iOctShift = int(iIdx / iScaleLen) * 12  ; +12 for groups 6-8
+        iDegree table iDegIdx, giScaleDegrees
+        iRoot = iTonic + iDegree + iOctShift
+        tableiw iRoot, iIdx, giGroupRoots
+        iIdx += 1
+    od
+    turnoff
+endin
+
+; ---------------------------
 ; Instrument 1: Single drone voice
 ; p4 = morph (0-1)
 ; p5 = seed
-; p6 = instance number (1-8) for routing to global bus
-; p7 = base frequency multiplier
+; p6 = group number (1-8) for routing to global bus
+; p7 = octave offset (0-3, spreads voices across registers)
 ; p8 = filter cutoff multiplier
 ; ---------------------------
 instr 1
@@ -75,27 +113,39 @@ instr 1
     iMorph = p4
     iSeed = p5
     iInstance = p6
-    iFreqMult = p7
+    iOctaveOff = p7
     iCutoffMult = p8
     
     seed iSeed
 
     ; ---------- amplitude envelope ----------
-    iAmp = 0.5
+    iAmp = 0.6
     iAttack = 1 + (iMorph*4)
     iRelease = 2
     kAmpEnv linen iAmp, iAttack, iDur, iRelease
 
     ; ---------- i-rate control parameters ----------
-    iBaseFreq = 40 * pow(240/40, iMorph) * iFreqMult
+    ; Read this group's root note from the pre-computed table
+    iGroupRoot table iInstance - 1, giGroupRoots
+    ; Bass voices (octave 0) always play the root for harmonic anchoring
+    ; Upper voices pick a consonant interval (P4, P5, or octave)
+    if (iOctaveOff == 0) then
+        iInterval = 0
+    else
+        iTableLen = ftlen(giIntervals)
+        iIdx random 0, iTableLen - 0.001
+        iIdx = int(iIdx)
+        iInterval table iIdx, giIntervals
+    endif
+    ; Frequency = group root + interval + octave spread
+    iBaseFreq = cpsmidinn(iGroupRoot + iInterval + iOctaveOff * 12)
     iOscMix   = 0.2 + iMorph*0.7
     iSpread   = 0.05 + iMorph*0.85
 
     ; ---------- k-rate control parameters for filter/reverb ----------
     kMorph = iMorph
-    kCutoff   = mapExp(kMorph, 0, 1, 200, 8000) * iCutoffMult
-    kResonance = mapLinear(kMorph, 0, 1, 0.1, 0.85)
-    kReverbMix = mapLinear(kMorph, 0, 1, 0.1, 0.5)
+    kCutoff   = mapExp(kMorph, 0, 1, 200, 5000) * iCutoffMult
+    kResonance = mapLinear(kMorph, 0, 1, 0.1, 0.55)
 
     ; ---------- k-rate LFO for stochastic modulation ----------
     kLfoRate1 = mapExp(kMorph, 0, 1, 0.02, 0.6)
@@ -109,14 +159,15 @@ instr 1
     kDetuneMult = cent(kDetuneCents)
 
     ; ---------- oscillator bank (8 partials, unrolled) ----------
-    iRand0 random -0.1, 0.1
-    iRand1 random -0.1, 0.1
-    iRand2 random -0.1, 0.1
-    iRand3 random -0.1, 0.1
-    iRand4 random -0.1, 0.1
-    iRand5 random -0.1, 0.1
-    iRand6 random -0.1, 0.1
-    iRand7 random -0.1, 0.1
+    ; Subtle detuning for warmth — tight enough to stay musical
+    iRand0 random -0.006, 0.006
+    iRand1 random -0.006, 0.006
+    iRand2 random -0.006, 0.006
+    iRand3 random -0.006, 0.006
+    iRand4 random -0.006, 0.006
+    iRand5 random -0.006, 0.006
+    iRand6 random -0.006, 0.006
+    iRand7 random -0.006, 0.006
 
     iFreq0 = iBaseFreq * (1.0 + iRand0)
     iFreq1 = iBaseFreq * (1.5 + iRand1)
@@ -127,7 +178,7 @@ instr 1
     iFreq6 = iBaseFreq * (4.0 + iRand6)
     iFreq7 = iBaseFreq * (4.5 + iRand7)
 
-    iPartAmp = 0.12
+    iPartAmp = 0.2
 
     ; Sine oscillators (lower partials)
     aOsc0 oscili iPartAmp * iOscMix, iFreq0 * kDetuneMult, 1
@@ -165,14 +216,9 @@ instr 1
     aSatL = tanh(aFiltL * (1 + kMorph*0.5))
     aSatR = tanh(aFiltR * (1 + kMorph*0.5))
 
-    ; ---------- reverb (individual per voice for variety) ----------
-    aRevL, aRevR reverbsc aSatL, aSatR, 0.85, 8000
-    aOutL = (1-kReverbMix)*aSatL + kReverbMix*aRevL
-    aOutR = (1-kReverbMix)*aSatR + kReverbMix*aRevR
-
-    ; Apply envelope
-    aOutL = aOutL * kAmpEnv
-    aOutR = aOutR * kAmpEnv
+    ; Apply envelope (spatial effects handled by master mixer)
+    aOutL = aSatL * kAmpEnv
+    aOutR = aSatR * kAmpEnv
 
     ; ---------- Route to global bus based on instance number ----------
     if (iInstance == 1) then
@@ -213,39 +259,177 @@ instr 2
     seed iSeed
 
     ; ---------- Master amplitude envelope ----------
-    iAmp = 0.8
-    kMasterEnv linen iAmp, 3, iDur, 4
+    iAmp = 1.0
+    kMasterEnv linen iAmp, 5, iDur, 6
 
-    ; ---------- LFOs for vectorial control (different rates for organic movement) ----------
-    ; X-axis LFO: slowest, controls low/high frequency blend
-    kLfoX lfo 1, 0.031, 0    ; ~32 second cycle, sine
-    
-    ; Y-axis LFO: medium speed, controls timbral darkness
-    kLfoY lfo 1, 0.047, 0    ; ~21 second cycle, sine
-    
-    ; Z-axis LFO: fastest, controls density/complexity
-    kLfoZ lfo 1, 0.071, 0    ; ~14 second cycle, sine
+    ; ---------- Ultra-slow chaotic vectorial control ----------
+    ; Each axis is a sum of 3 layers at very different time scales,
+    ; cross-coupled for unpredictable orbital movement
 
-    ; Add some subtle randomness to the LFO movement
-    kRandX randh 0.15, 0.1
-    kRandY randh 0.15, 0.08
-    kRandZ randh 0.15, 0.12
-    
-    kX = kLfoX + kRandX
-    kY = kLfoY + kRandY
-    kZ = kLfoZ + kRandZ
-    
-    ; Clamp to valid range
-    kX = max(-1, min(1, kX))
-    kY = max(-1, min(1, kY))
-    kZ = max(-1, min(1, kZ))
+    ; Layer 1: glacial drift (100-1000s cycles)
+    kGlacial1 jspline 0.6, 0.001, 0.01
+    kGlacial2 jspline 0.6, 0.0008, 0.009
+    kGlacial3 jspline 0.6, 0.0012, 0.011
+
+    ; Layer 2: slow evolution (30-100s cycles)
+    kSlow1 jspline 0.4, 0.01, 0.035
+    kSlow2 jspline 0.4, 0.008, 0.03
+    kSlow3 jspline 0.4, 0.012, 0.04
+
+    ; Layer 3: gentle wander (10-50s)
+    kWander1 jspline 0.2, 0.02, 0.1
+    kWander2 jspline 0.2, 0.018, 0.09
+    kWander3 jspline 0.2, 0.025, 0.11
+
+    ; Heavy cross-coupling for chaotic orbital paths
+    kRawX = kGlacial1 + kSlow1 + kWander1 + tanh(kGlacial2 * kSlow3) * 0.3 + tanh(kGlacial3 * kWander2) * 0.15
+    kRawY = kGlacial2 + kSlow2 + kWander2 + tanh(kGlacial3 * kSlow1) * 0.3 + tanh(kGlacial1 * kWander3) * 0.15
+    kRawZ = kGlacial3 + kSlow3 + kWander3 + tanh(kGlacial1 * kSlow2) * 0.3 + tanh(kGlacial2 * kWander1) * 0.15
+
+    ; Soft-clip to [-1, 1]
+    kX = tanh(kRawX)
+    kY = tanh(kRawY)
+    kZ = tanh(kRawZ)
 
     ; ---------- Apply vec8 crossfade to left and right channels ----------
     aMixL vec8 gaSourceL1, gaSourceL2, gaSourceL3, gaSourceL4, gaSourceL5, gaSourceL6, gaSourceL7, gaSourceL8, kX, kY, kZ
     aMixR vec8 gaSourceR1, gaSourceR2, gaSourceR3, gaSourceR4, gaSourceR5, gaSourceR6, gaSourceR7, gaSourceR8, kX, kY, kZ
 
+    ; ==========================================================
+    ; FILTER VEC8: 8 antipodal filters with slow chaotic morphing
+    ; Each corner has a fundamentally different filter character
+    ; ==========================================================
+
+    ; --- Chaotic LFOs for filter vec8 (independent from drone vec8) ---
+    ; Glacial layer (200-800s)
+    kFGlac1 jspline 0.65, 0.0012, 0.005
+    kFGlac2 jspline 0.65, 0.001,  0.006
+    kFGlac3 jspline 0.65, 0.0015, 0.0045
+
+    ; Slow layer (40-120s)
+    kFSlow1 jspline 0.35, 0.008, 0.025
+    kFSlow2 jspline 0.35, 0.007, 0.022
+    kFSlow3 jspline 0.35, 0.009, 0.028
+
+    ; Drift layer (15-60s)
+    kFDrift1 jspline 0.18, 0.017, 0.07
+    kFDrift2 jspline 0.18, 0.015, 0.065
+    kFDrift3 jspline 0.18, 0.02, 0.075
+
+    ; Cross-couple filter axes
+    kFRawX = kFGlac1 + kFSlow1 + kFDrift1 + tanh(kFGlac2 * kFSlow3) * 0.25
+    kFRawY = kFGlac2 + kFSlow2 + kFDrift2 + tanh(kFGlac3 * kFSlow1) * 0.25
+    kFRawZ = kFGlac3 + kFSlow3 + kFDrift3 + tanh(kFGlac1 * kFSlow2) * 0.25
+    kFX = tanh(kFRawX)
+    kFY = tanh(kFRawY)
+    kFZ = tanh(kFRawZ)
+
+    ; --- Slowly wandering filter parameters ---
+    kFCrawl1 jspline 1, 0.003, 0.02
+    kFCrawl2 jspline 1, 0.004, 0.025
+    kFCrawl3 jspline 1, 0.002, 0.015
+
+    ; All filters are parallel-mixed 50/50 with dry signal to keep body
+    ; and prevent energy loss from narrow/extreme filtering
+
+    ; --- Filter 1 (corner -1,-1,-1): Warm lowpass ---
+    kLP1cut = 600 + 2400 * (0.5 + 0.5*tanh(kFCrawl1))  ; 600-3000 Hz
+    aF1L moogladder aMixL, kLP1cut, 0.15
+    aF1R moogladder aMixR, kLP1cut, 0.15
+    aF1L = aF1L * 0.85 + aMixL * 0.15
+    aF1R = aF1R * 0.85 + aMixR * 0.15
+
+    ; --- Filter 2 (corner +1,-1,-1): Gentle highpass — opens up the air ---
+    kHP2cut = 120 + 600 * (0.5 + 0.5*tanh(kFCrawl2))  ; 120-720 Hz
+    aF2L buthp aMixL, kHP2cut
+    aF2R buthp aMixR, kHP2cut
+    aF2L = aF2L * 0.85 + aMixL * 0.15
+    aF2R = aF2R * 0.85 + aMixR * 0.15
+
+    ; --- Filter 3 (corner -1,+1,-1): Wide bandpass — focused but full ---
+    kBP3cf = 400 + 1800 * (0.5 + 0.5*tanh(kFCrawl3))  ; 400-2200 Hz
+    kBP3bw = 400 + 800 * (0.5 + 0.5*tanh(kFCrawl1*0.7))  ; 400-1200 Hz bandwidth
+    aF3L reson aMixL, kBP3cf, kBP3bw, 1
+    aF3R reson aMixR, kBP3cf * 1.02, kBP3bw, 1
+    aF3L = aF3L * 0.8 + aMixL * 0.2
+    aF3R = aF3R * 0.8 + aMixR * 0.2
+
+    ; --- Filter 4 (corner +1,+1,-1): Subtle notch — slight hollow coloring ---
+    kN4cf = 600 + 1400 * (0.5 + 0.5*tanh(kFCrawl2*0.8))  ; 600-2000 Hz
+    aNotchL reson aMixL, kN4cf, 200, 1
+    aNotchR reson aMixR, kN4cf, 200, 1
+    aF4L = aMixL - aNotchL * 0.7
+    aF4R = aMixR - aNotchR * 0.7
+
+    ; --- Filter 5 (corner -1,-1,+1): Comb filter — subtle metallic color ---
+    kCombDly = 0.002 + 0.008 * (0.5 + 0.5*tanh(kFCrawl3*0.9))  ; 2-10ms
+    aF5L vcomb aMixL, 0.65, kCombDly, 0.012
+    aF5R vcomb aMixR, 0.65, kCombDly * 1.015, 0.012
+    aF5L = aF5L * 0.8 + aMixL * 0.2
+    aF5R = aF5R * 0.8 + aMixR * 0.2
+
+    ; --- Filter 6 (corner +1,-1,+1): Bright but full LP — silky, present ---
+    kLP6cut = 4000 + 10000 * (0.5 + 0.5*tanh(kFCrawl1*0.6))  ; 4000-14000 Hz
+    aF6L tone aMixL, kLP6cut
+    aF6R tone aMixR, kLP6cut
+    aF6L = aF6L * 0.9 + aMixL * 0.1
+    aF6R = aF6R * 0.9 + aMixR * 0.1
+
+    ; --- Filter 7 (corner -1,+1,+1): Gentle formant — vowel hint ---
+    kForm1 = 500 + 400 * tanh(kFCrawl2*0.5)   ; ~100-900 Hz
+    kForm2 = 1800 + 800 * tanh(kFCrawl3*0.6)  ; ~1000-2600 Hz
+    aForm1L reson aMixL, kForm1, 300, 1
+    aForm1R reson aMixR, kForm1, 300, 1
+    aForm2L reson aMixL, kForm2, 400, 1
+    aForm2R reson aMixR, kForm2, 400, 1
+    aF7L = (aForm1L * 0.4 + aForm2L * 0.3) + aMixL * 0.15
+    aF7R = (aForm1R * 0.4 + aForm2R * 0.3) + aMixR * 0.15
+
+    ; --- Filter 8 (corner +1,+1,+1): Mild resonant LP — warm color ---
+    kLP8cut = 1000 + 5000 * (0.5 + 0.5*tanh(kFCrawl1*0.8))  ; 1000-6000 Hz
+    kLP8res = 0.3 + 0.2 * tanh(kFCrawl2*0.7)  ; 0.1-0.5
+    aF8L moogladder aMixL, kLP8cut, kLP8res
+    aF8R moogladder aMixR, kLP8cut * 1.01, kLP8res
+    aF8L = aF8L * 0.85 + aMixL * 0.15
+    aF8R = aF8R * 0.85 + aMixR * 0.15
+
+    ; --- Apply filter vec8 crossfade ---
+    aMixL vec8 aF1L, aF2L, aF3L, aF4L, aF5L, aF6L, aF7L, aF8L, kFX, kFY, kFZ
+    aMixR vec8 aF1R, aF2R, aF3R, aF4R, aF5R, aF6R, aF7R, aF8R, kFX, kFY, kFZ
+
+    ; ---------- Makeup gain after filter vec8 ----------
+    aMixL = aMixL * 3.0
+    aMixR = aMixR * 3.0
+
+    ; ---------- Stereo multi-tap echo ----------
+    aBufL delayr 4.0
+    aTapL1 deltap3 0.375
+    aTapL2 deltap3 1.125
+    aTapL3 deltap3 2.25
+    delayw aMixL + aTapL1 * 0.5
+
+    aBufR delayr 4.0
+    aTapR1 deltap3 0.5
+    aTapR2 deltap3 1.333
+    aTapR3 deltap3 2.667
+    delayw aMixR + aTapR1 * 0.5
+
+    aMixL = aMixL + aTapL1*0.35 + aTapL2*0.2 + aTapL3*0.1
+    aMixR = aMixR + aTapR1*0.35 + aTapR2*0.2 + aTapR3*0.1
+
+    ; ---------- Master reverb for spatial cohesion ----------
+    aMstRevL, aMstRevR reverbsc aMixL, aMixR, 0.94, 10000
+    aMixL = aMixL*0.35 + aMstRevL*0.65
+    aMixR = aMixR*0.35 + aMstRevR*0.65
+
+    ; ---------- Soft limiter ----------
+    aMixL = aMixL * 3.0
+    aMixR = aMixR * 3.0
+    aOutL = tanh(aMixL)
+    aOutR = tanh(aMixR)
+
     ; ---------- Master output ----------
-    outs aMixL * kMasterEnv, aMixR * kMasterEnv
+    outs aOutL * kMasterEnv, aOutR * kMasterEnv
 
     ; ---------- Clear global buses ----------
     gaSourceL1 = 0
@@ -272,28 +456,63 @@ endin
 ; f1 = sine wave table
 f1 0 16384 10 1
 
-; 8 drone voices with drastically different settings
-; p1=instr p2=start p3=dur p4=morph p5=seed p6=instance p7=freqMult p8=cutoffMult
+; Initialize 8 random root notes (runs once, then turns off)
+i99 0 0.01 __SEED__
 
-; Voice 1: Deep sub-bass, dark (corner -1,-1,-1)
-i1 0 __DURATION__ 0.05  11111 1  0.25   0.3
-; Voice 2: Low bass, slightly brighter (corner +1,-1,-1)
-i1 0 __DURATION__ 0.15  22222 2  0.5    0.5
-; Voice 3: Low-mid, warm (corner -1,+1,-1)
-i1 0 __DURATION__ 0.3   33333 3  0.75   0.7
-; Voice 4: Mid-range, neutral (corner +1,+1,-1)
-i1 0 __DURATION__ 0.45  44444 4  1.0    1.0
-; Voice 5: Mid-high, airy (corner -1,-1,+1)
-i1 0 __DURATION__ 0.6   55555 5  1.5    1.3
-; Voice 6: High, shimmering (corner +1,-1,+1)
-i1 0 __DURATION__ 0.75  66666 6  2.0    1.6
-; Voice 7: Very high, ethereal (corner -1,+1,+1)
-i1 0 __DURATION__ 0.9   77777 7  3.0    2.0
-; Voice 8: Highest, crystalline (corner +1,+1,+1)
-i1 0 __DURATION__ 1.0   88888 8  4.0    2.5
+; 8 drone groups × 4 voices = 32 voices → meta vec8
+; p1=instr p2=start p3=dur p4=morph p5=seed p6=group(1-8) p7=octaveOff p8=cutoffMult
+; Each group gets its own random root note; each voice picks a random chord interval
 
-; Main vectorial mixer (must run after drone voices, hence higher instr number)
-i2 0 __DURATION__ __SEED__
+; Group 1 (vec8 corner -1,-1,-1)
+i1 0.02 __DURATION__ 0.1  10001 1  0  0.5
+i1 0.02 __DURATION__ 0.35 10002 1  1  0.8
+i1 0.02 __DURATION__ 0.65 10003 1  2  1.3
+i1 0.02 __DURATION__ 0.9  10004 1  3  1.8
+
+; Group 2 (vec8 corner +1,-1,-1)
+i1 0.02 __DURATION__ 0.1  20001 2  0  0.5
+i1 0.02 __DURATION__ 0.35 20002 2  1  0.8
+i1 0.02 __DURATION__ 0.65 20003 2  2  1.3
+i1 0.02 __DURATION__ 0.9  20004 2  3  1.8
+
+; Group 3 (vec8 corner -1,+1,-1)
+i1 0.02 __DURATION__ 0.1  30001 3  0  0.5
+i1 0.02 __DURATION__ 0.35 30002 3  1  0.8
+i1 0.02 __DURATION__ 0.65 30003 3  2  1.3
+i1 0.02 __DURATION__ 0.9  30004 3  3  1.8
+
+; Group 4 (vec8 corner +1,+1,-1)
+i1 0.02 __DURATION__ 0.1  40001 4  0  0.5
+i1 0.02 __DURATION__ 0.35 40002 4  1  0.8
+i1 0.02 __DURATION__ 0.65 40003 4  2  1.3
+i1 0.02 __DURATION__ 0.9  40004 4  3  1.8
+
+; Group 5 (vec8 corner -1,-1,+1)
+i1 0.02 __DURATION__ 0.1  50001 5  0  0.5
+i1 0.02 __DURATION__ 0.35 50002 5  1  0.8
+i1 0.02 __DURATION__ 0.65 50003 5  2  1.3
+i1 0.02 __DURATION__ 0.9  50004 5  3  1.8
+
+; Group 6 (vec8 corner +1,-1,+1)
+i1 0.02 __DURATION__ 0.1  60001 6  0  0.5
+i1 0.02 __DURATION__ 0.35 60002 6  1  0.8
+i1 0.02 __DURATION__ 0.65 60003 6  2  1.3
+i1 0.02 __DURATION__ 0.9  60004 6  3  1.8
+
+; Group 7 (vec8 corner -1,+1,+1)
+i1 0.02 __DURATION__ 0.1  70001 7  0  0.5
+i1 0.02 __DURATION__ 0.35 70002 7  1  0.8
+i1 0.02 __DURATION__ 0.65 70003 7  2  1.3
+i1 0.02 __DURATION__ 0.9  70004 7  3  1.8
+
+; Group 8 (vec8 corner +1,+1,+1)
+i1 0.02 __DURATION__ 0.1  80001 8  0  0.5
+i1 0.02 __DURATION__ 0.35 80002 8  1  0.8
+i1 0.02 __DURATION__ 0.65 80003 8  2  1.3
+i1 0.02 __DURATION__ 0.9  80004 8  3  1.8
+
+; Meta vec8 mixer — ultra-slow chaotic morphing between 8 drone groups
+i2 0.02 __DURATION__ __SEED__
 
 e
 </CsScore>
