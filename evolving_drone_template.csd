@@ -77,8 +77,8 @@ giGroupRoots ftgen 0, 0, -8, -2,  0, 0, 0, 0, 0, 0, 0, 0
 
 ; ---------------------------
 ; Instrument 99: Initialization
-; Picks one random tonic, then assigns group roots
-; from 6-z48 hexachord built on that tonic.
+; Picks one random tonic, applies random transposition (-6 to +6),
+; then assigns group roots from 5-35 pentatonic built on that tonic.
 ; Groups are spread across 2 octaves for range.
 ; ---------------------------
 instr 99
@@ -86,6 +86,10 @@ instr 99
     ; Random tonic: MIDI 12 (C-1) to 23 (B-1)
     iTonic random 12, 24
     iTonic = int(iTonic)
+    ; Random transposition: -6 to +6 semitones
+    iTranspose random -6, 7
+    iTranspose = int(iTranspose)
+    iTonic = iTonic + iTranspose
     iScaleLen = ftlen(giScaleDegrees)
     iIdx = 0
     while (iIdx < 8) do
@@ -329,69 +333,85 @@ instr 2
     kFCrawl2 jspline 1, 0.004, 0.025
     kFCrawl3 jspline 1, 0.002, 0.015
 
-    ; All filters are parallel-mixed 50/50 with dry signal to keep body
-    ; and prevent energy loss from narrow/extreme filtering
+    ; 8 comb filters tuned to musical pitches from the pentatonic scale
+    ; Each corner uses a different scale degree + octave for variety
+    ; Delay times derived from MIDI notes for musical resonance
+    ; Feedback (resonance) varies per filter for timbral contrast
 
-    ; --- Filter 1 (corner -1,-1,-1): Warm lowpass ---
-    kLP1cut = 600 + 2400 * (0.5 + 0.5*tanh(kFCrawl1))  ; 600-3000 Hz
-    aF1L moogladder aMixL, kLP1cut, 0.15
-    aF1R moogladder aMixR, kLP1cut, 0.15
-    aF1L = aF1L * 0.85 + aMixL * 0.15
-    aF1R = aF1R * 0.85 + aMixR * 0.15
+    ; Read the root for comb tuning reference
+    iCombRoot table 0, giGroupRoots
 
-    ; --- Filter 2 (corner +1,-1,-1): Gentle highpass — opens up the air ---
-    kHP2cut = 120 + 600 * (0.5 + 0.5*tanh(kFCrawl2))  ; 120-720 Hz
-    aF2L buthp aMixL, kHP2cut
-    aF2R buthp aMixR, kHP2cut
-    aF2L = aF2L * 0.85 + aMixL * 0.15
-    aF2R = aF2R * 0.85 + aMixR * 0.15
+    ; --- Filter 1 (corner -1,-1,-1): root, low register ---
+    iComb1midi = iCombRoot + 24  ; +2 octaves into audible range
+    iComb1dly = 1 / cpsmidinn(iComb1midi)
+    kComb1dly = iComb1dly * (1 + kFCrawl1 * 0.03)  ; subtle drift
+    aF1L vcomb aMixL, 0.55, kComb1dly, 0.05
+    aF1R vcomb aMixR, 0.55, kComb1dly * 1.005, 0.05
+    aF1L = aF1L * 0.7 + aMixL * 0.3
+    aF1R = aF1R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 3 (corner -1,+1,-1): Wide bandpass — focused but full ---
-    kBP3cf = 400 + 1800 * (0.5 + 0.5*tanh(kFCrawl3))  ; 400-2200 Hz
-    kBP3bw = 400 + 800 * (0.5 + 0.5*tanh(kFCrawl1*0.7))  ; 400-1200 Hz bandwidth
-    aF3L reson aMixL, kBP3cf, kBP3bw, 1
-    aF3R reson aMixR, kBP3cf * 1.02, kBP3bw, 1
-    aF3L = aF3L * 0.8 + aMixL * 0.2
-    aF3R = aF3R * 0.8 + aMixR * 0.2
+    ; --- Filter 2 (corner +1,-1,-1): +P5, low register ---
+    iComb2midi = iCombRoot + 24 + 7
+    iComb2dly = 1 / cpsmidinn(iComb2midi)
+    kComb2dly = iComb2dly * (1 + kFCrawl2 * 0.03)
+    aF2L vcomb aMixL, 0.60, kComb2dly, 0.05
+    aF2R vcomb aMixR, 0.60, kComb2dly * 1.005, 0.05
+    aF2L = aF2L * 0.7 + aMixL * 0.3
+    aF2R = aF2R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 4 (corner +1,+1,-1): Subtle notch — slight hollow coloring ---
-    kN4cf = 600 + 1400 * (0.5 + 0.5*tanh(kFCrawl2*0.8))  ; 600-2000 Hz
-    aNotchL reson aMixL, kN4cf, 200, 1
-    aNotchR reson aMixR, kN4cf, 200, 1
-    aF4L = aMixL - aNotchL * 0.7
-    aF4R = aMixR - aNotchR * 0.7
+    ; --- Filter 3 (corner -1,+1,-1): +2 semitones, mid register ---
+    iComb3midi = iCombRoot + 36 + 2
+    iComb3dly = 1 / cpsmidinn(iComb3midi)
+    kComb3dly = iComb3dly * (1 + kFCrawl3 * 0.03)
+    aF3L vcomb aMixL, 0.50, kComb3dly, 0.025
+    aF3R vcomb aMixR, 0.50, kComb3dly * 1.005, 0.025
+    aF3L = aF3L * 0.7 + aMixL * 0.3
+    aF3R = aF3R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 5 (corner -1,-1,+1): Comb filter — subtle metallic color ---
-    kCombDly = 0.002 + 0.008 * (0.5 + 0.5*tanh(kFCrawl3*0.9))  ; 2-10ms
-    aF5L vcomb aMixL, 0.65, kCombDly, 0.012
-    aF5R vcomb aMixR, 0.65, kCombDly * 1.015, 0.012
-    aF5L = aF5L * 0.8 + aMixL * 0.2
-    aF5R = aF5R * 0.8 + aMixR * 0.2
+    ; --- Filter 4 (corner +1,+1,-1): +P4, mid register ---
+    iComb4midi = iCombRoot + 36 + 5
+    iComb4dly = 1 / cpsmidinn(iComb4midi)
+    kComb4dly = iComb4dly * (1 + kFCrawl1 * 0.025)
+    aF4L vcomb aMixL, 0.65, kComb4dly, 0.025
+    aF4R vcomb aMixR, 0.65, kComb4dly * 1.005, 0.025
+    aF4L = aF4L * 0.7 + aMixL * 0.3
+    aF4R = aF4R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 6 (corner +1,-1,+1): Bright but full LP — silky, present ---
-    kLP6cut = 4000 + 10000 * (0.5 + 0.5*tanh(kFCrawl1*0.6))  ; 4000-14000 Hz
-    aF6L tone aMixL, kLP6cut
-    aF6R tone aMixR, kLP6cut
-    aF6L = aF6L * 0.9 + aMixL * 0.1
-    aF6R = aF6R * 0.9 + aMixR * 0.1
+    ; --- Filter 5 (corner -1,-1,+1): +9 semitones (maj6), mid register ---
+    iComb5midi = iCombRoot + 36 + 9
+    iComb5dly = 1 / cpsmidinn(iComb5midi)
+    kComb5dly = iComb5dly * (1 + kFCrawl2 * 0.025)
+    aF5L vcomb aMixL, 0.45, kComb5dly, 0.02
+    aF5R vcomb aMixR, 0.45, kComb5dly * 1.005, 0.02
+    aF5L = aF5L * 0.7 + aMixL * 0.3
+    aF5R = aF5R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 7 (corner -1,+1,+1): Gentle formant — vowel hint ---
-    kForm1 = 500 + 400 * tanh(kFCrawl2*0.5)   ; ~100-900 Hz
-    kForm2 = 1800 + 800 * tanh(kFCrawl3*0.6)  ; ~1000-2600 Hz
-    aForm1L reson aMixL, kForm1, 300, 1
-    aForm1R reson aMixR, kForm1, 300, 1
-    aForm2L reson aMixL, kForm2, 400, 1
-    aForm2R reson aMixR, kForm2, 400, 1
-    aF7L = (aForm1L * 0.4 + aForm2L * 0.3) + aMixL * 0.15
-    aF7R = (aForm1R * 0.4 + aForm2R * 0.3) + aMixR * 0.15
+    ; --- Filter 6 (corner +1,-1,+1): root, high register ---
+    iComb6midi = iCombRoot + 48
+    iComb6dly = 1 / cpsmidinn(iComb6midi)
+    kComb6dly = iComb6dly * (1 + kFCrawl3 * 0.02)
+    aF6L vcomb aMixL, 0.40, kComb6dly, 0.012
+    aF6R vcomb aMixR, 0.40, kComb6dly * 1.005, 0.012
+    aF6L = aF6L * 0.7 + aMixL * 0.3
+    aF6R = aF6R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 8 (corner +1,+1,+1): Mild resonant LP — warm color ---
-    kLP8cut = 1000 + 5000 * (0.5 + 0.5*tanh(kFCrawl1*0.8))  ; 1000-6000 Hz
-    kLP8res = 0.3 + 0.2 * tanh(kFCrawl2*0.7)  ; 0.1-0.5
-    aF8L moogladder aMixL, kLP8cut, kLP8res
-    aF8R moogladder aMixR, kLP8cut * 1.01, kLP8res
-    aF8L = aF8L * 0.85 + aMixL * 0.15
-    aF8R = aF8R * 0.85 + aMixR * 0.15
+    ; --- Filter 7 (corner -1,+1,+1): +P5, high register ---
+    iComb7midi = iCombRoot + 48 + 7
+    iComb7dly = 1 / cpsmidinn(iComb7midi)
+    kComb7dly = iComb7dly * (1 + kFCrawl1 * 0.02)
+    aF7L vcomb aMixL, 0.50, kComb7dly, 0.012
+    aF7R vcomb aMixR, 0.50, kComb7dly * 1.005, 0.012
+    aF7L = aF7L * 0.7 + aMixL * 0.3
+    aF7R = aF7R * 0.7 + aMixR * 0.3
+
+    ; --- Filter 8 (corner +1,+1,+1): +octave+P4, highest ---
+    iComb8midi = iCombRoot + 48 + 5
+    iComb8dly = 1 / cpsmidinn(iComb8midi)
+    kComb8dly = iComb8dly * (1 + kFCrawl2 * 0.02)
+    aF8L vcomb aMixL, 0.35, kComb8dly, 0.01
+    aF8R vcomb aMixR, 0.35, kComb8dly * 1.005, 0.01
+    aF8L = aF8L * 0.7 + aMixL * 0.3
+    aF8R = aF8R * 0.7 + aMixR * 0.3
 
     ; --- Apply filter vec8 crossfade ---
     aMixL vec8 aF1L, aF2L, aF3L, aF4L, aF5L, aF6L, aF7L, aF8L, kFX, kFY, kFZ
