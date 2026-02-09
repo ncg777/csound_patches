@@ -345,8 +345,8 @@ instr 2
     iComb1midi = iCombRoot + 24  ; +2 octaves into audible range
     iComb1dly = 1 / cpsmidinn(iComb1midi)
     kComb1dly = iComb1dly * (1 + kFCrawl1 * 0.03)  ; subtle drift
-    aF1L vcomb aMixL, 0.55, kComb1dly, 0.05
-    aF1R vcomb aMixR, 0.55, kComb1dly * 1.005, 0.05
+    aF1L vcomb aMixL, 0.82, kComb1dly, 0.05
+    aF1R vcomb aMixR, 0.82, kComb1dly * 1.005, 0.05
     aF1L = aF1L * 0.7 + aMixL * 0.3
     aF1R = aF1R * 0.7 + aMixR * 0.3
 
@@ -354,8 +354,8 @@ instr 2
     iComb2midi = iCombRoot + 24 + 7
     iComb2dly = 1 / cpsmidinn(iComb2midi)
     kComb2dly = iComb2dly * (1 + kFCrawl2 * 0.03)
-    aF2L vcomb aMixL, 0.60, kComb2dly, 0.05
-    aF2R vcomb aMixR, 0.60, kComb2dly * 1.005, 0.05
+    aF2L vcomb aMixL, 0.85, kComb2dly, 0.05
+    aF2R vcomb aMixR, 0.85, kComb2dly * 1.005, 0.05
     aF2L = aF2L * 0.7 + aMixL * 0.3
     aF2R = aF2R * 0.7 + aMixR * 0.3
 
@@ -363,8 +363,8 @@ instr 2
     iComb3midi = iCombRoot + 36 + 2
     iComb3dly = 1 / cpsmidinn(iComb3midi)
     kComb3dly = iComb3dly * (1 + kFCrawl3 * 0.03)
-    aF3L vcomb aMixL, 0.50, kComb3dly, 0.025
-    aF3R vcomb aMixR, 0.50, kComb3dly * 1.005, 0.025
+    aF3L vcomb aMixL, 0.78, kComb3dly, 0.025
+    aF3R vcomb aMixR, 0.78, kComb3dly * 1.005, 0.025
     aF3L = aF3L * 0.7 + aMixL * 0.3
     aF3R = aF3R * 0.7 + aMixR * 0.3
 
@@ -372,8 +372,8 @@ instr 2
     iComb4midi = iCombRoot + 36 + 5
     iComb4dly = 1 / cpsmidinn(iComb4midi)
     kComb4dly = iComb4dly * (1 + kFCrawl1 * 0.025)
-    aF4L vcomb aMixL, 0.65, kComb4dly, 0.025
-    aF4R vcomb aMixR, 0.65, kComb4dly * 1.005, 0.025
+    aF4L vcomb aMixL, 0.88, kComb4dly, 0.025
+    aF4R vcomb aMixR, 0.88, kComb4dly * 1.005, 0.025
     aF4L = aF4L * 0.7 + aMixL * 0.3
     aF4R = aF4R * 0.7 + aMixR * 0.3
 
@@ -381,8 +381,8 @@ instr 2
     iComb5midi = iCombRoot + 36 + 9
     iComb5dly = 1 / cpsmidinn(iComb5midi)
     kComb5dly = iComb5dly * (1 + kFCrawl2 * 0.025)
-    aF5L vcomb aMixL, 0.45, kComb5dly, 0.02
-    aF5R vcomb aMixR, 0.45, kComb5dly * 1.005, 0.02
+    aF5L vcomb aMixL, 0.75, kComb5dly, 0.02
+    aF5R vcomb aMixR, 0.75, kComb5dly * 1.005, 0.02
     aF5L = aF5L * 0.7 + aMixL * 0.3
     aF5R = aF5R * 0.7 + aMixR * 0.3
 
@@ -390,8 +390,8 @@ instr 2
     iComb6midi = iCombRoot + 48
     iComb6dly = 1 / cpsmidinn(iComb6midi)
     kComb6dly = iComb6dly * (1 + kFCrawl3 * 0.02)
-    aF6L vcomb aMixL, 0.40, kComb6dly, 0.012
-    aF6R vcomb aMixR, 0.40, kComb6dly * 1.005, 0.012
+    aF6L vcomb aMixL, 0.72, kComb6dly, 0.012
+    aF6R vcomb aMixR, 0.72, kComb6dly * 1.005, 0.012
     aF6L = aF6L * 0.7 + aMixL * 0.3
     aF6R = aF6R * 0.7 + aMixR * 0.3
 
@@ -399,8 +399,8 @@ instr 2
     iComb7midi = iCombRoot + 48 + 7
     iComb7dly = 1 / cpsmidinn(iComb7midi)
     kComb7dly = iComb7dly * (1 + kFCrawl1 * 0.02)
-    aF7L vcomb aMixL, 0.50, kComb7dly, 0.012
-    aF7R vcomb aMixR, 0.50, kComb7dly * 1.005, 0.012
+    aF7L vcomb aMixL, 0.80, kComb7dly, 0.012
+    aF7R vcomb aMixR, 0.80, kComb7dly * 1.005, 0.012
     aF7L = aF7L * 0.7 + aMixL * 0.3
     aF7R = aF7R * 0.7 + aMixR * 0.3
 
@@ -408,8 +408,8 @@ instr 2
     iComb8midi = iCombRoot + 48 + 5
     iComb8dly = 1 / cpsmidinn(iComb8midi)
     kComb8dly = iComb8dly * (1 + kFCrawl2 * 0.02)
-    aF8L vcomb aMixL, 0.35, kComb8dly, 0.01
-    aF8R vcomb aMixR, 0.35, kComb8dly * 1.005, 0.01
+    aF8L vcomb aMixL, 0.70, kComb8dly, 0.01
+    aF8R vcomb aMixR, 0.70, kComb8dly * 1.005, 0.01
     aF8L = aF8L * 0.7 + aMixL * 0.3
     aF8R = aF8R * 0.7 + aMixR * 0.3
 
@@ -418,8 +418,8 @@ instr 2
     aMixR vec8 aF1R, aF2R, aF3R, aF4R, aF5R, aF6R, aF7R, aF8R, kFX, kFY, kFZ
 
     ; ---------- Makeup gain after filter vec8 ----------
-    aMixL = aMixL * 3.0
-    aMixR = aMixR * 3.0
+    aMixL = aMixL * 2.0
+    aMixR = aMixR * 2.0
 
     ; ---------- Stereo multi-tap echo ----------
     aBufL delayr 4.0
@@ -443,8 +443,8 @@ instr 2
     aMixR = aMixR*0.35 + aMstRevR*0.65
 
     ; ---------- Soft limiter ----------
-    aMixL = aMixL * 3.0
-    aMixR = aMixR * 3.0
+    aMixL = aMixL * 2.0
+    aMixR = aMixR * 2.0
     aOutL = tanh(aMixL)
     aOutR = tanh(aMixR)
 
