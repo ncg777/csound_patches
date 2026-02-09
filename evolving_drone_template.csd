@@ -83,8 +83,8 @@ giGroupRoots ftgen 0, 0, -8, -2,  0, 0, 0, 0, 0, 0, 0, 0
 ; ---------------------------
 instr 99
     seed p4
-    ; Random tonic: MIDI 0 (C-0) to 11 (B-0)
-    iTonic random 0, 12
+    ; Random tonic: MIDI 12 (C-1) to 23 (B-1)
+    iTonic random 12, 24
     iTonic = int(iTonic)
     ; Random transposition: -6 to +6 semitones
     iTranspose random -6, 7
@@ -148,7 +148,7 @@ instr 1
 
     ; ---------- k-rate control parameters for filter/reverb ----------
     kMorph = iMorph
-    kCutoff   = mapExp(kMorph, 0, 1, 200, 5000) * iCutoffMult
+    kCutoff   = mapExp(kMorph, 0, 1, 150, 3000) * iCutoffMult
     kResonance = mapLinear(kMorph, 0, 1, 0.1, 0.55)
 
     ; ---------- k-rate LFO for stochastic modulation ----------
@@ -173,24 +173,25 @@ instr 1
     iRand6 random -0.006, 0.006
     iRand7 random -0.006, 0.006
 
-    iFreq0 = iBaseFreq * (1.0 + iRand0)
-    iFreq1 = iBaseFreq * (1.5 + iRand1)
-    iFreq2 = iBaseFreq * (2.0 + iRand2)
-    iFreq3 = iBaseFreq * (2.5 + iRand3)
-    iFreq4 = iBaseFreq * (3.0 + iRand4)
-    iFreq5 = iBaseFreq * (3.5 + iRand5)
-    iFreq6 = iBaseFreq * (4.0 + iRand6)
-    iFreq7 = iBaseFreq * (4.5 + iRand7)
+    ; Partial series shifted down: sub-octave through 3.5× fundamental
+    iFreq0 = iBaseFreq * (0.5 + iRand0)   ; sub-octave
+    iFreq1 = iBaseFreq * (0.75 + iRand1)  ; sub-fifth
+    iFreq2 = iBaseFreq * (1.0 + iRand2)   ; fundamental
+    iFreq3 = iBaseFreq * (1.5 + iRand3)
+    iFreq4 = iBaseFreq * (2.0 + iRand4)
+    iFreq5 = iBaseFreq * (2.5 + iRand5)
+    iFreq6 = iBaseFreq * (3.0 + iRand6)
+    iFreq7 = iBaseFreq * (3.5 + iRand7)
 
     iPartAmp = 0.2
 
-    ; Sine oscillators (lower partials)
+    ; Sine oscillators (lower 4 partials — warm foundation)
     aOsc0 oscili iPartAmp * iOscMix, iFreq0 * kDetuneMult, 1
     aOsc1 oscili iPartAmp * iOscMix, iFreq1 * kDetuneMult, 1
+    aOsc2 oscili iPartAmp * iOscMix, iFreq2 * kDetuneMult, 1
+    aOsc3 oscili iPartAmp * iOscMix, iFreq3 * kDetuneMult, 1
 
-    ; Sawtooth oscillators (higher partials)
-    aOsc2 vco2 iPartAmp * (1-iOscMix), iFreq2 * kDetuneMult, 0
-    aOsc3 vco2 iPartAmp * (1-iOscMix), iFreq3 * kDetuneMult, 0
+    ; Sawtooth oscillators (upper 4 partials only)
     aOsc4 vco2 iPartAmp * (1-iOscMix), iFreq4 * kDetuneMult, 0
     aOsc5 vco2 iPartAmp * (1-iOscMix), iFreq5 * kDetuneMult, 0
     aOsc6 vco2 iPartAmp * (1-iOscMix), iFreq6 * kDetuneMult, 0
@@ -341,75 +342,75 @@ instr 2
     ; Read the root for comb tuning reference
     iCombRoot table 0, giGroupRoots
 
-    ; --- Filter 1 (corner -1,-1,-1): root, low register ---
-    iComb1midi = iCombRoot + 24  ; +2 octaves into audible range
+    ; --- Filter 1 (corner -1,-1,-1): root, sub-bass register ---
+    iComb1midi = iCombRoot + 12  ; +1 octave
     iComb1dly = 1 / cpsmidinn(iComb1midi)
     kComb1dly = iComb1dly * (1 + kFCrawl1 * 0.03)  ; subtle drift
-    aF1L vcomb aMixL, 0.82, kComb1dly, 0.05
-    aF1R vcomb aMixR, 0.82, kComb1dly * 1.005, 0.05
+    aF1L vcomb aMixL, 0.82, kComb1dly, 0.1
+    aF1R vcomb aMixR, 0.82, kComb1dly * 1.005, 0.1
     aF1L = aF1L * 0.7 + aMixL * 0.3
     aF1R = aF1R * 0.7 + aMixR * 0.3
 
     ; --- Filter 2 (corner +1,-1,-1): +P5, low register ---
-    iComb2midi = iCombRoot + 24 + 7
+    iComb2midi = iCombRoot + 12 + 7
     iComb2dly = 1 / cpsmidinn(iComb2midi)
     kComb2dly = iComb2dly * (1 + kFCrawl2 * 0.03)
-    aF2L vcomb aMixL, 0.85, kComb2dly, 0.05
-    aF2R vcomb aMixR, 0.85, kComb2dly * 1.005, 0.05
+    aF2L vcomb aMixL, 0.85, kComb2dly, 0.1
+    aF2R vcomb aMixR, 0.85, kComb2dly * 1.005, 0.1
     aF2L = aF2L * 0.7 + aMixL * 0.3
     aF2R = aF2R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 3 (corner -1,+1,-1): +2 semitones, mid register ---
-    iComb3midi = iCombRoot + 36 + 2
+    ; --- Filter 3 (corner -1,+1,-1): +2 semitones, low-mid register ---
+    iComb3midi = iCombRoot + 24 + 2
     iComb3dly = 1 / cpsmidinn(iComb3midi)
     kComb3dly = iComb3dly * (1 + kFCrawl3 * 0.03)
-    aF3L vcomb aMixL, 0.78, kComb3dly, 0.025
-    aF3R vcomb aMixR, 0.78, kComb3dly * 1.005, 0.025
+    aF3L vcomb aMixL, 0.78, kComb3dly, 0.05
+    aF3R vcomb aMixR, 0.78, kComb3dly * 1.005, 0.05
     aF3L = aF3L * 0.7 + aMixL * 0.3
     aF3R = aF3R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 4 (corner +1,+1,-1): +P4, mid register ---
-    iComb4midi = iCombRoot + 36 + 5
+    ; --- Filter 4 (corner +1,+1,-1): +P4, low-mid register ---
+    iComb4midi = iCombRoot + 24 + 5
     iComb4dly = 1 / cpsmidinn(iComb4midi)
     kComb4dly = iComb4dly * (1 + kFCrawl1 * 0.025)
-    aF4L vcomb aMixL, 0.88, kComb4dly, 0.025
-    aF4R vcomb aMixR, 0.88, kComb4dly * 1.005, 0.025
+    aF4L vcomb aMixL, 0.88, kComb4dly, 0.05
+    aF4R vcomb aMixR, 0.88, kComb4dly * 1.005, 0.05
     aF4L = aF4L * 0.7 + aMixL * 0.3
     aF4R = aF4R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 5 (corner -1,-1,+1): +9 semitones (maj6), mid register ---
-    iComb5midi = iCombRoot + 36 + 9
+    ; --- Filter 5 (corner -1,-1,+1): +9 semitones (maj6), low-mid register ---
+    iComb5midi = iCombRoot + 24 + 9
     iComb5dly = 1 / cpsmidinn(iComb5midi)
     kComb5dly = iComb5dly * (1 + kFCrawl2 * 0.025)
-    aF5L vcomb aMixL, 0.75, kComb5dly, 0.02
-    aF5R vcomb aMixR, 0.75, kComb5dly * 1.005, 0.02
+    aF5L vcomb aMixL, 0.75, kComb5dly, 0.05
+    aF5R vcomb aMixR, 0.75, kComb5dly * 1.005, 0.05
     aF5L = aF5L * 0.7 + aMixL * 0.3
     aF5R = aF5R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 6 (corner +1,-1,+1): root, high register ---
-    iComb6midi = iCombRoot + 48
+    ; --- Filter 6 (corner +1,-1,+1): root, mid register ---
+    iComb6midi = iCombRoot + 36
     iComb6dly = 1 / cpsmidinn(iComb6midi)
     kComb6dly = iComb6dly * (1 + kFCrawl3 * 0.02)
-    aF6L vcomb aMixL, 0.72, kComb6dly, 0.012
-    aF6R vcomb aMixR, 0.72, kComb6dly * 1.005, 0.012
+    aF6L vcomb aMixL, 0.72, kComb6dly, 0.025
+    aF6R vcomb aMixR, 0.72, kComb6dly * 1.005, 0.025
     aF6L = aF6L * 0.7 + aMixL * 0.3
     aF6R = aF6R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 7 (corner -1,+1,+1): +P5, high register ---
-    iComb7midi = iCombRoot + 48 + 7
+    ; --- Filter 7 (corner -1,+1,+1): +P5, mid register ---
+    iComb7midi = iCombRoot + 36 + 7
     iComb7dly = 1 / cpsmidinn(iComb7midi)
     kComb7dly = iComb7dly * (1 + kFCrawl1 * 0.02)
-    aF7L vcomb aMixL, 0.80, kComb7dly, 0.012
-    aF7R vcomb aMixR, 0.80, kComb7dly * 1.005, 0.012
+    aF7L vcomb aMixL, 0.80, kComb7dly, 0.025
+    aF7R vcomb aMixR, 0.80, kComb7dly * 1.005, 0.025
     aF7L = aF7L * 0.7 + aMixL * 0.3
     aF7R = aF7R * 0.7 + aMixR * 0.3
 
-    ; --- Filter 8 (corner +1,+1,+1): +octave+P4, highest ---
-    iComb8midi = iCombRoot + 48 + 5
+    ; --- Filter 8 (corner +1,+1,+1): +P4, mid register ---
+    iComb8midi = iCombRoot + 36 + 5
     iComb8dly = 1 / cpsmidinn(iComb8midi)
     kComb8dly = iComb8dly * (1 + kFCrawl2 * 0.02)
-    aF8L vcomb aMixL, 0.70, kComb8dly, 0.01
-    aF8R vcomb aMixR, 0.70, kComb8dly * 1.005, 0.01
+    aF8L vcomb aMixL, 0.70, kComb8dly, 0.025
+    aF8R vcomb aMixR, 0.70, kComb8dly * 1.005, 0.025
     aF8L = aF8L * 0.7 + aMixL * 0.3
     aF8R = aF8R * 0.7 + aMixR * 0.3
 
@@ -438,7 +439,7 @@ instr 2
     aMixR = aMixR + aTapR1*0.35 + aTapR2*0.2 + aTapR3*0.1
 
     ; ---------- Master reverb for spatial cohesion ----------
-    aMstRevL, aMstRevR reverbsc aMixL, aMixR, 0.94, 10000
+    aMstRevL, aMstRevR reverbsc aMixL, aMixR, 0.94, 6000
     aMixL = aMixL*0.35 + aMstRevL*0.65
     aMixR = aMixR*0.35 + aMstRevR*0.65
 
