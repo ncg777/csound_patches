@@ -83,8 +83,8 @@ giGroupRoots ftgen 0, 0, -8, -2,  0, 0, 0, 0, 0, 0, 0, 0
 ; ---------------------------
 instr 99
     seed p4
-    ; Random tonic: MIDI 12 (C-1) to 23 (B-1)
-    iTonic random 12, 24
+    ; Random tonic: MIDI 0 (C-0) to 11 (B-0)
+    iTonic random 0, 12
     iTonic = int(iTonic)
     ; Random transposition: -6 to +6 semitones
     iTranspose random -6, 7
