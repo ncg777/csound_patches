@@ -7,7 +7,7 @@
 
 <CsInstruments>
 
-sr = 44100
+sr = 48000
 ksmps = 128
 nchnls = 2
 0dbfs = 1
@@ -31,6 +31,9 @@ gaSourceL7 init 0
 gaSourceR7 init 0
 gaSourceL8 init 0
 gaSourceR8 init 0
+
+; Global pitch bend multiplier (updated by instr 2, used by instr 1)
+gkPitchBend init 1
 
 ; ---------------------------
 ; Helper functions (k-rate)
@@ -125,7 +128,7 @@ instr 1
     iAMFreq random 0.5, 8.0
     iAMDepth random 0.8, 0.99        ; each voice gets a different depth
     kAMSine oscili 1, iAMFreq, 1
-    kAM = (1 - iAMDepth) + kAMSine * iAMDepth   ; range [1-2*depth .. 1]
+    kAM = 1 - iAMDepth * (1 - kAMSine) * 0.5   ; range [1-depth .. 1], always positive
 
     ; ---------- Vibrato: random sine between 0.5–8 Hz ----------
     iVibratoFreq  random 0.5, 8.0
@@ -169,8 +172,8 @@ instr 1
     kDetuneCents = mapLinear(kRand1, -1, 1, -12*(1-iMorph), 12*iMorph)
     kFilterShift = mapLinear(kRand2, -1, 1, -0.5, 1.5)
     
-    ; Frequency multiplier from detuning + vibrato (combined into one cent() call)
-    kDetuneMult = cent(kDetuneCents + kVibratoSine * iVibratoDepth)
+    ; Frequency multiplier from detuning + vibrato + global pitch bend
+    kDetuneMult = cent(kDetuneCents + kVibratoSine * iVibratoDepth) * gkPitchBend
 
     ; ---------- oscillator bank (8 partials, unrolled) ----------
     ; Subtle detuning for warmth — tight enough to stay musical
@@ -272,6 +275,11 @@ instr 2
     iDur = p3
     iSeed = p4
     seed iSeed
+
+    ; ---------- Very slow global pitch bend: triangle LFO ±6 semitones ----------
+    ; Period = 240 s (4 minutes) — one complete sweep up and back down
+    kPBSemitones lfo 6, 1/240, 1
+    gkPitchBend = cent(kPBSemitones * 100)
 
     ; ---------- Master amplitude envelope ----------
     iAmp = 1.0
