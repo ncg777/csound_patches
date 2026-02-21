@@ -123,9 +123,14 @@ instr 1
 
     ; ---------- AM tremolo: random sine between 0.5–8 Hz ----------
     iAMFreq random 0.5, 8.0
-    iAMDepth random 0.6, 0.95        ; each voice gets a different depth
+    iAMDepth random 0.8, 0.99        ; each voice gets a different depth
     kAMSine oscili 1, iAMFreq, 1
     kAM = (1 - iAMDepth) + kAMSine * iAMDepth   ; range [1-2*depth .. 1]
+
+    ; ---------- Vibrato: random sine between 0.5–8 Hz ----------
+    iVibratoFreq  random 0.5, 8.0
+    iVibratoDepth random 5, 25       ; cents peak deviation per voice
+    kVibratoSine oscili 1, iVibratoFreq, 1
 
     ; ---------- amplitude envelope ----------
     iAmp = 0.6
@@ -164,8 +169,8 @@ instr 1
     kDetuneCents = mapLinear(kRand1, -1, 1, -12*(1-iMorph), 12*iMorph)
     kFilterShift = mapLinear(kRand2, -1, 1, -0.5, 1.5)
     
-    ; Frequency multiplier from detuning
-    kDetuneMult = cent(kDetuneCents)
+    ; Frequency multiplier from detuning + vibrato (combined into one cent() call)
+    kDetuneMult = cent(kDetuneCents + kVibratoSine * iVibratoDepth)
 
     ; ---------- oscillator bank (8 partials, unrolled) ----------
     ; Subtle detuning for warmth — tight enough to stay musical
