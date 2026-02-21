@@ -66,11 +66,10 @@ endop
 ; Chord interval pool & per-group root note storage
 ; ---------------------------
 ; Consonant intervals only: unison, P4, P5, octave
-giIntervals ftgen 0, 0, -4, -2,  0, 5, 7, 12
+giIntervals ftgen 0, 0, -4, -2,  0, 6, 9, 12
 
-; 5-35 pentatonic degrees in semitones (relative to tonic)
-; Forte set class 5-35.05 [0,2,5,7,9]
-giScaleDegrees ftgen 0, 0, -5, -2,  0, 2, 5, 7, 9
+; Forte set class 5-31A.01 [1,2,4,7,10]
+giScaleDegrees ftgen 0, 0, -5, -2,  1, 2, 4, 7, 10
 
 ; Table to hold 8 random root MIDI notes (filled by instr 99)
 giGroupRoots ftgen 0, 0, -8, -2,  0, 0, 0, 0, 0, 0, 0, 0
@@ -121,6 +120,12 @@ instr 1
     iCutoffMult = p8
     
     seed iSeed
+
+    ; ---------- AM tremolo: random sine between 0.5–8 Hz ----------
+    iAMFreq random 0.5, 8.0
+    iAMDepth random 0.6, 0.95        ; each voice gets a different depth
+    kAMSine oscili 1, iAMFreq, 1
+    kAM = (1 - iAMDepth) + kAMSine * iAMDepth   ; range [1-2*depth .. 1]
 
     ; ---------- amplitude envelope ----------
     iAmp = 0.6
@@ -221,9 +226,9 @@ instr 1
     aSatL = tanh(aFiltL * (1 + kMorph*0.5))
     aSatR = tanh(aFiltR * (1 + kMorph*0.5))
 
-    ; Apply envelope (spatial effects handled by master mixer)
-    aOutL = aSatL * kAmpEnv
-    aOutR = aSatR * kAmpEnv
+    ; Apply envelope and AM tremolo (spatial effects handled by master mixer)
+    aOutL = aSatL * kAmpEnv * kAM
+    aOutR = aSatR * kAmpEnv * kAM
 
     ; ---------- Route to global bus based on instance number ----------
     if (iInstance == 1) then
@@ -442,6 +447,10 @@ instr 2
     aMstRevL, aMstRevR reverbsc aMixL, aMixR, 0.94, 6000
     aMixL = aMixL*0.35 + aMstRevL*0.65
     aMixR = aMixR*0.35 + aMstRevR*0.65
+
+    ; ---------- Master lowpass — tame high-frequency harshness ----------
+    aMixL butlp aMixL, 6500
+    aMixR butlp aMixR, 6500
 
     ; ---------- Soft limiter ----------
     aMixL = aMixL * 2.0
