@@ -1,0 +1,88 @@
+@echo off
+setlocal enabledelayedexpansion
+
+:: ============================================================
+:: metabell.bat — Render a MIDI file with the MetaBell patch
+::
+:: Usage:   metabell.bat <midifile> [output.wav]
+:: Example: metabell.bat mypiece.mid
+::          metabell.bat mypiece.mid mypiece_bells.wav
+::
+:: The MetaBell patch produces ambient bell-chime textures
+:: with deep reverb and elaborate echoes.  Timbre morphs
+:: randomly through 8 sound sources (additive bell, FM bell,
+:: FM metallic, filtered string, pluck, noise bell, AM bell,
+:: crystal) via the vec8 opcode — no MIDI CC required.
+:: ============================================================
+
+if "%~1"=="" (
+    echo.
+    echo  Usage:   metabell.bat ^<midifile^> [output.wav]
+    echo  Example: metabell.bat mypiece.mid
+    echo.
+    exit /b 1
+)
+
+set MIDIFILE=%~1
+
+if not exist "%MIDIFILE%" (
+    echo.
+    echo  ERROR: MIDI file not found: %MIDIFILE%
+    echo.
+    exit /b 1
+)
+
+if "%~2"=="" (
+    set OUTFILE=%~n1_metabell.wav
+) else (
+    set OUTFILE=%~2
+)
+
+echo.
+echo  ================================================
+echo    MetaBell  ^|  Ambient Bell Chime Renderer
+echo  ================================================
+echo    Input:   %MIDIFILE%
+echo    Output:  %OUTFILE%
+echo    Timbre morphs randomly (no CC needed)
+echo  ================================================
+echo.
+
+:: -T  : terminate when the MIDI file is exhausted
+::       (bell notes ring out via xtratim before stopping)
+:: -F  : MIDI file input
+csound -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metabell.csd"
+
+if !ERRORLEVEL! neq 0 (
+    echo.
+    echo  ERROR: Csound exited with code !ERRORLEVEL!.
+    echo  Make sure csound is in your PATH.
+    exit /b !ERRORLEVEL!
+)
+
+:: Optional: normalize to -14 LUFS with ffmpeg (same pattern
+:: as render_drone.bat in this repo)
+where ffmpeg >nul 2>&1
+if !ERRORLEVEL! equ 0 (
+    echo.
+    echo  Normalizing to -14 LUFS...
+    set NORMFILE=%TEMP%\metabell_norm_%RANDOM%.wav
+    ffmpeg -hide_banner -loglevel warning ^
+        -i "%OUTFILE%" ^
+        -af loudnorm=I=-14:TP=-1:LRA=11:print_format=summary ^
+        -y "!NORMFILE!" 2>&1
+    if !ERRORLEVEL! equ 0 (
+        move /y "!NORMFILE!" "%OUTFILE%" >nul
+        echo  Normalized: %OUTFILE%
+    ) else (
+        del "!NORMFILE!" 2>nul
+        echo  WARNING: ffmpeg normalization failed; keeping raw render.
+    )
+) else (
+    echo.
+    echo  NOTE: Install ffmpeg for automatic -14 LUFS normalization.
+)
+
+echo.
+echo  Done: %OUTFILE%
+echo.
