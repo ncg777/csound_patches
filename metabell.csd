@@ -2,6 +2,8 @@
 <CsOptions>
 ; Usage: csound -T -F input.mid -o output.wav metabell.csd
 ; Companion script: metabell.bat input.mid [output.wav]
+; 32-bit float WAV avoids int16 scaling issues with 0dbfs=1
+--format=float
 </CsOptions>
 
 <CsInstruments>
@@ -11,8 +13,12 @@ ksmps  = 64
 nchnls = 2
 0dbfs  = 1
 
-; Route all MIDI channels to MetaBell
-massign 0, "MetaBell"
+; Route all MIDI channels to MetaBell (use numeric instr number for Csound 6 compatibility)
+; MetaBell is instr 2 (defined after MorphController)
+massign 0, 2
+; Lock program-change routing to MetaBell so program-change events in the
+; MIDI file (e.g. "C0 00") cannot silently redirect notes to instr 1.
+pgmassign 0, 2
 
 #include "my_udos.inc"
 

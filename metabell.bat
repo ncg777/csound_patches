@@ -51,7 +51,7 @@ echo.
 :: -T  : terminate when the MIDI file is exhausted
 ::       (bell notes ring out via xtratim before stopping)
 :: -F  : MIDI file input
-csound -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metabell.csd"
+csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metabell.csd"
 
 if !ERRORLEVEL! neq 0 (
     echo.
@@ -70,6 +70,7 @@ if !ERRORLEVEL! equ 0 (
     ffmpeg -hide_banner -loglevel warning ^
         -i "%OUTFILE%" ^
         -af loudnorm=I=-14:TP=-1:LRA=11:print_format=summary ^
+        -ar 48000 ^
         -y "!NORMFILE!" 2>&1
     if !ERRORLEVEL! equ 0 (
         move /y "!NORMFILE!" "%OUTFILE%" >nul
