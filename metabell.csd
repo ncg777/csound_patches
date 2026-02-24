@@ -89,10 +89,12 @@ endin
 ;   S2 - 3-voice detuned sines, moderate detune
 ;   S3 - 4-voice detuned sines, wide detune
 ;   S4 - 2-voice detuned sines + quiet inharmonic partial
-;   S5 - Narrow noiseband at fundamental
-;   S6 - Narrow noiseband at 2.756x partial
-;   S7 - Dual noiseband: fundamental + 5.404x partial
-;   S8 - Wide diffuse noiseband at fundamental
+;   S5 - Crystal FM bell (2:1 ratio, two detuned free-running modulators)
+;   S6 - Sine chorus at 2.756x + root, per-source vibrato/tremolo LFOs
+;   S7 - Rich metallic FM (3.5x + sqrt(2) modulators, stacked operators)
+;   S8 - Wide diffuse noiseband at fundamental (airy wash)
+; Blend: 50% per-note random cube coords + 50% global MorphController
+; Attack: humanized per-note (iHardness 0=silky smooth, 1=hard percussive)
 ; =======================================================
 instr MetaBell
   ; ---- MIDI input ----
@@ -119,12 +121,17 @@ instr MetaBell
   iFq3 = ifreq * (1 + iDt3)
   iFq4 = ifreq * (1 + iDt4)
 
-  ; ---- Staggered per-voice envelopes (dynamic unison movement)
+  ; ---- Humanized attack: 0 = silky smooth, 1 = hard percussive ----
+  iHardness  random  0, 1
+  iAttBase   = 0.003 + (1 - iHardness) * 0.022   ; 3 ms (hard) -> 25 ms (smooth)
+  iAmpScale  = 0.85 + iHardness * 0.30            ; harder hits punch slightly louder
+
+  ; ---- Staggered per-voice envelopes with humanized attack ----
   ; Successively delayed attacks create a shimmering phasing effect
-  aEnv1 expseg 0.001, 0.005, 1.00, 0.040, 0.55, iRing, 0.0001
-  aEnv2 expseg 0.001, 0.009, 0.90, 0.050, 0.50, iRing, 0.0001
-  aEnv3 expseg 0.001, 0.013, 0.80, 0.060, 0.45, iRing, 0.0001
-  aEnv4 expseg 0.001, 0.017, 0.70, 0.070, 0.40, iRing, 0.0001
+  aEnv1 expseg 0.001, iAttBase,         iAmpScale,         0.040, 0.55, iRing, 0.0001
+  aEnv2 expseg 0.001, iAttBase*1.8,     iAmpScale*0.90,    0.050, 0.50, iRing, 0.0001
+  aEnv3 expseg 0.001, iAttBase*2.6,     iAmpScale*0.80,    0.060, 0.45, iRing, 0.0001
+  aEnv4 expseg 0.001, iAttBase*3.4,     iAmpScale*0.70,    0.070, 0.40, iRing, 0.0001
 
   ; ---- Free-running per-note LFOs (independent of MIDI CC) ----
   iLR1 random 0.12, 3.50   ; vibrato rate
@@ -190,38 +197,62 @@ instr MetaBell
   aS4 = (aSin4a + aSin4b + aSin4p*0.40) * iamp * 0.28
 
   ; ==============================================================
-  ; SOURCE 5: Narrow noiseband at fundamental
-  ; Very tight BW (~3%) — sounds like a pure tone ±slight breath
+  ; SOURCE 5: Crystal FM bell — carrier at fundamental, two
+  ; detuned free-running modulators at 2:1 ratio, plus a third
+  ; shimmer operator.  Index decays bright -> crystal -> shimmer.
   ; ==============================================================
-  kNB5f   = ifreq * (1 + kFiltLFO * 0.005)
-  kNB5bw  = ifreq * 0.030
-  aNB5    noiseband kNB5f, kNB5bw
-  aNB5env expseg 0.001, 0.010, 1.0, 0.08, 0.40, iRing*0.50, 0.0001
-  aS5 = aNB5 * aNB5env * iamp * 0.55
+  iMDet5   random   -0.004, 0.004           ; modulator detuning
+  iMFreq5a = ifreq * 2.000 * (1 + iMDet5)
+  iMFreq5b = ifreq * 2.000 * (1 - iMDet5 * 0.7)
+  iMFreq5c = ifreq * 2.003                  ; extra shimmer operator
+  kFMIdx5  linseg   6.0 + iHardness*2.5, iAttBase*5, 1.8, iRing*0.35, 0.28
+  aFMMod5a oscili   kFMIdx5 * iMFreq5a,             iMFreq5a, giSine
+  aFMMod5b oscili   kFMIdx5 * 0.55 * iMFreq5b,      iMFreq5b, giSine
+  aFMMod5c oscili   kFMIdx5 * 0.28 * iMFreq5c,      iMFreq5c, giSine
+  aS5env   expseg   0.001, iAttBase, 1.0, 0.06, 0.55, iRing, 0.0001
+  aS5a     oscili   aS5env,        ifreq * kVib + aFMMod5a + aFMMod5c, giSine
+  aS5b     oscili   aS5env * 0.60, ifreq * kVib + aFMMod5b,            giSine
+  aS5 = (aS5a + aS5b) * iamp * 0.44
 
   ; ==============================================================
-  ; SOURCE 6: Narrow noiseband at 2.756x partial
-  ; Classic Chowning bell overtone rendered as resonant noise
-  ; Decays faster than the fundamental band
+  ; SOURCE 6: Sine chorus at the 2.756x Chowning partial + root.
+  ; Three voices with independent free-running vibrato and a
+  ; separate per-source tremolo oscillator — each note sounds
+  ; uniquely alive with organic pitch and amplitude movement.
   ; ==============================================================
-  kNB6f   = ifreq * 2.756 * (1 + kFiltLFO * 0.003)
-  kNB6bw  = ifreq * 0.060
-  aNB6    noiseband kNB6f, kNB6bw
-  aNB6env expseg 0.001, 0.004, 1.0, 0.04, 0.30, iRing*0.28, 0.0001
-  aS6 = aNB6 * aNB6env * iamp * 0.48
+  iVibR6a  random   0.15, 0.80
+  iVibR6b  random   0.09, 0.55
+  iTremR6  random   0.20, 1.20
+  iVibD6   random   0.003, 0.009
+  kVib6a   oscili   1, iVibR6a, giSine
+  kVib6b   oscili   1, iVibR6b, giSine
+  kTrem6   oscili   1, iTremR6, giSine
+  aS6env   expseg   0.001, iAttBase*1.2, 0.90, 0.045, 0.35, iRing*0.35, 0.0001
+  aSin6a   oscili   aS6env,        ifreq * 2.756 * (1 + kVib6a * iVibD6),        giSine
+  aSin6b   oscili   aS6env * 0.65, ifreq * 2.758 * (1 + kVib6b * iVibD6 * 0.8),  giSine
+  aSin6c   oscili   aS6env * 0.45, ifreq          * (1 + kVib6a * iVibD6 * 0.5),  giSine
+  aS6 = (aSin6a + aSin6b + aSin6c) * (1 + kTrem6 * 0.14) * iamp * 0.40
 
   ; ==============================================================
-  ; SOURCE 7: Dual noiseband — fundamental + 5.404x partial
-  ; Two resonant nodes that fade at different rates;
-  ; the upper band is wider for an airy shimmer
+  ; SOURCE 7: Rich metallic FM — two detuned carriers fed by a
+  ; pair of free-running modulators at inharmonic ratios (~3.5x
+  ; and sqrt(2)x), plus a stacked modulator for dense harmonics.
+  ; Index decays from percussive brightness to warm metallic ring.
   ; ==============================================================
-  kNB7f1  = ifreq * (1 + kFiltLFO * 0.008)
-  kNB7f2  = ifreq * 5.404
-  kNB7bw  = ifreq * 0.040
-  aNB7a   noiseband kNB7f1, kNB7bw
-  aNB7b   noiseband kNB7f2, kNB7bw * 3.0
-  aNB7env expseg 0.001, 0.006, 0.80, 0.05, 0.35, iRing*0.38, 0.0001
-  aS7 = (aNB7a + aNB7b*0.50) * aNB7env * iamp * 0.44
+  iMDet7   random   -0.005, 0.005
+  iMFreq7a = ifreq * 3.502 * (1 + iMDet7)
+  iMFreq7b = ifreq * 3.498 * (1 - iMDet7)
+  iMFreq7c = ifreq * 1.41421356              ; sqrt(2) metallic colour
+  kFMIdx7  linseg   4.5 + iHardness*2.0, iAttBase*4, 1.5, iRing*0.40, 0.16
+  aFMMod7a oscili   kFMIdx7 * iMFreq7a,              iMFreq7a,     giSine
+  aFMMod7b oscili   kFMIdx7 * 0.75 * iMFreq7b,       iMFreq7b,     giSine
+  aFMMod7c oscili   kFMIdx7 * 0.40 * iMFreq7c,       iMFreq7c,     giSine
+  aFMMod7d oscili   kFMIdx7 * 0.28 * iMFreq7a*0.5,   iMFreq7a*0.5, giSine
+  aS7env   expseg   0.001, iAttBase*0.8, 0.80, 0.055, 0.38, iRing, 0.0001
+  aS7a     oscili   aS7env,        ifreq * (1 + iMDet7) + aFMMod7a + aFMMod7c, giSine
+  aS7b     oscili   aS7env * 0.75, ifreq * (1 - iMDet7) + aFMMod7b,            giSine
+  aS7c     oscili   aS7env * 0.45, ifreq                + aFMMod7d,             giSine
+  aS7 = (aS7a + aS7b + aS7c) * iamp * 0.36
 
   ; ==============================================================
   ; SOURCE 8: Wide diffuse noiseband at fundamental
@@ -268,8 +299,13 @@ instr MetaBell
   kLocalY  =  iCyA + (iCyB - iCyA) * kMorphEnv
   kLocalZ  =  iCzA + (iCzB - iCzA) * kMorphEnv
 
-  aMixL vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kLocalX,        kLocalY,        kLocalZ
-  aMixR vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kLocalX+0.015,  kLocalY-0.010,  kLocalZ+0.012
+  ; Blend per-note cube coords (50%) with global MorphController (50%)
+  kBlendX = kLocalX * 0.5 + gkMX * 0.5
+  kBlendY = kLocalY * 0.5 + gkMY * 0.5
+  kBlendZ = kLocalZ * 0.5 + gkMZ * 0.5
+
+  aMixL vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kBlendX,        kBlendY,        kBlendZ
+  aMixR vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kBlendX+0.015,  kBlendY-0.010,  kBlendZ+0.012
 
   ; Apply tremolo and stereo pan
   aOutL  = aMixL * kTrem * kPL
@@ -328,8 +364,8 @@ instr MasterMix
   aRevL, aRevR reverbsc aEchoL, aEchoR, 0.965, 8000
 
   ; Wet/dry blend: 30% direct echo + 70% reverb
-  aMixL = aEchoL * 0.30 + aRevL * 0.70
-  aMixR = aEchoR * 0.30 + aRevR * 0.70
+  aMixL = aEchoL * 0.90 + aRevL * 0.10
+  aMixR = aEchoR * 0.90 + aRevR * 0.10
 
   ; ---- Master lowpass to tame high-frequency harshness ----
   aMixL butlp aMixL, 9000
