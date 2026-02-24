@@ -80,18 +80,19 @@ endin
 ; MetaBell
 ; MIDI-triggered bell chime with 8 morphing sound sources,
 ; 4-voice dynamic unison, per-note free-running LFOs, and
-; filtered noise component.  The vec8 blend between all
-; 8 sources is governed by gkMX/Y/Z which evolve randomly.
+; resonant noiseband components.  Each note picks two random
+; corners of the vec8 cube and crossfades A→B on attack,
+; sustains at B, then releases back to A on note-off.
 ;
 ; Source timbres:
-;   S1 - Additive sine bell  (Chowning inharmonic partials)
-;   S2 - FM bell             (C:M = 1:1.4, medium index)
-;   S3 - FM metallic/gong    (C:M = 1:2.8, high index)
-;   S4 - Filtered sawtooth   (string/cello character)
-;   S5 - Plucked string      (Karplus-Strong)
-;   S6 - Bandpass noise bell (brushed gong / wind chime)
-;   S7 - AM bell             (sideband shimmer)
-;   S8 - Crystal bell        (4-voice detuned sine + chirp)
+;   S1 - 2-voice detuned sines, very narrow detune
+;   S2 - 3-voice detuned sines, moderate detune
+;   S3 - 4-voice detuned sines, wide detune
+;   S4 - 2-voice detuned sines + quiet inharmonic partial
+;   S5 - Narrow noiseband at fundamental
+;   S6 - Narrow noiseband at 2.756x partial
+;   S7 - Dual noiseband: fundamental + 5.404x partial
+;   S8 - Wide diffuse noiseband at fundamental
 ; =======================================================
 instr MetaBell
   ; ---- MIDI input ----
@@ -100,8 +101,10 @@ instr MetaBell
   iamp   = (iVel / 127.0) * 0.42
 
   ; ---- Bell ring extends well beyond the MIDI note-off ----
+  ; xtratim covers: bell decay (iRing) + delay echo tail (~6 s max tap)
+  ; + reverbsc tail (0.965 feedback, ~40 s to inaudible)
   iRing   = 8.0
-  xtratim iRing + 0.5
+  xtratim iRing + 50
 
   ; ---- Per-note random seed (time-based: each note differs) ----
   seed 0
@@ -126,13 +129,11 @@ instr MetaBell
   ; ---- Free-running per-note LFOs (independent of MIDI CC) ----
   iLR1 random 0.12, 3.50   ; vibrato rate
   iLR2 random 0.08, 2.00   ; tremolo rate
-  iLR3 random 0.05, 1.50   ; filter-sweep rate
-  iLR4 random 0.18, 4.50   ; FM-index modulation rate
+  iLR3 random 0.05, 1.50   ; filter-sweep / noiseband wobble rate
 
   kVibLFO  oscili 1, iLR1, giSine
   kTremLFO oscili 1, iLR2, giSine
   kFiltLFO oscili 1, iLR3, giSine
-  kFMiLFO  oscili 1, iLR4, giSine
 
   ; Vibrato factor (subtle pitch wobble)
   iVibD random 0.002, 0.007
@@ -147,116 +148,128 @@ instr MetaBell
   kPR  = 0.5 + iPan * 0.5
 
   ; ==============================================================
-  ; SOURCE 1: Additive Sine Bell — Chowning bell model
-  ; Inharmonic partial ratios: 1.000, 2.756, 5.404, 8.933
-  ; Higher partials decay faster (independent partial envelopes)
-  ; Two detuned unison voices for warmth
+  ; SOURCE 1: 2-voice detuned sines — very narrow detune
+  ; Calm, nearly pure tone with a faint beating shimmer
   ; ==============================================================
-  aP1e expseg 0.001, 0.004, 0.80, iRing*0.92, 0.0001
-  aP2e expseg 0.001, 0.004, 0.60, iRing*0.52, 0.0001
-  aP3e expseg 0.001, 0.004, 0.38, iRing*0.32, 0.0001
-  aP4e expseg 0.001, 0.004, 0.22, iRing*0.20, 0.0001
-
-  aB11 oscili aP1e, iFq1*1.000*kVib, giSine
-  aB12 oscili aP2e, iFq1*2.756*kVib, giSine
-  aB13 oscili aP3e, iFq1*5.404*kVib, giSine
-  aB14 oscili aP4e, iFq1*8.933*kVib, giSine
-  aB21 oscili aP1e, iFq2*1.000*kVib, giSine
-  aB22 oscili aP2e, iFq2*2.756*kVib, giSine
-  aB23 oscili aP3e, iFq2*5.404*kVib, giSine
-  aB24 oscili aP4e, iFq2*8.933*kVib, giSine
-  aS1 = (aB11+aB12+aB13+aB14+aB21+aB22+aB23+aB24) * iamp * 0.11
+  iDtS1   random  0.001, 0.003
+  aSin1a  oscili aEnv1, iFq1*(1+iDtS1)*kVib, giSine
+  aSin1b  oscili aEnv2, iFq2*(1-iDtS1)*kVib, giSine
+  aS1 = (aSin1a + aSin1b) * iamp * 0.36
 
   ; ==============================================================
-  ; SOURCE 2: FM Bell — classic bell FM synthesis
-  ; Carrier:Modulator ratio 1:1.4 with slowly varying index
-  ; Two detuned voices
+  ; SOURCE 2: 3-voice detuned sines — moderate detune
+  ; Richer chorus with a gentle spreading of pitch
   ; ==============================================================
-  kFM2i   = 3.0 + kFMiLFO * 2.5
-  aFM2m1  oscili kFM2i * iFq1 * 1.4, iFq1 * 1.4, giSine
-  aFM2v1  oscili aEnv1, iFq1 + aFM2m1, giSine
-  aFM2m2  oscili kFM2i * iFq2 * 1.4, iFq2 * 1.4, giSine
-  aFM2v2  oscili aEnv2, iFq2 + aFM2m2, giSine
-  aS2 = (aFM2v1 + aFM2v2) * iamp * 0.28
+  iDtS2   random  0.003, 0.007
+  aSin2a  oscili aEnv1, iFq1*(1+iDtS2)*kVib, giSine
+  aSin2b  oscili aEnv2, iFq2*kVib,            giSine
+  aSin2c  oscili aEnv3, iFq3*(1-iDtS2)*kVib, giSine
+  aS2 = (aSin2a + aSin2b + aSin2c) * iamp * 0.26
 
   ; ==============================================================
-  ; SOURCE 3: FM Metallic/Gong — higher index, dissonant C:M ratio
-  ; C:M = 1:2.8 produces rich gong/cymbal inharmonicity
+  ; SOURCE 3: 4-voice detuned sines — wide detune
+  ; Lush, slow-beating cluster across the 4 unison voices
   ; ==============================================================
-  iFM3base random 5.0, 12.0
-  kFM3i   = iFM3base + kFMiLFO * 3.5
-  aFM3m1  oscili kFM3i * iFq1 * 2.8, iFq1 * 2.8, giSine
-  aFM3v1  oscili aEnv1, iFq1 + aFM3m1, giSine
-  aFM3m2  oscili kFM3i * iFq3 * 2.8, iFq3 * 2.8, giSine
-  aFM3v2  oscili aEnv3, iFq3 + aFM3m2, giSine
-  aS3 = (aFM3v1 + aFM3v2) * iamp * 0.24
+  iDtS3   random  0.006, 0.012
+  aSin3a  oscili aEnv1, iFq1*(1+iDtS3    )*kVib, giSine
+  aSin3b  oscili aEnv2, iFq2*(1+iDtS3/3  )*kVib, giSine
+  aSin3c  oscili aEnv3, iFq3*(1-iDtS3/3  )*kVib, giSine
+  aSin3d  oscili aEnv4, iFq4*(1-iDtS3    )*kVib, giSine
+  aS3 = (aSin3a + aSin3b + aSin3c + aSin3d) * iamp * 0.20
 
   ; ==============================================================
-  ; SOURCE 4: Filtered Sawtooth — bowed string / cello quality
-  ; Moog ladder filter swept by LFO for evolving brightness
+  ; SOURCE 4: 2-voice detuned sines + quiet inharmonic partial
+  ; Adds one Chowning 2.756x overtone for very subtle bell colour
+  ; The partial decays faster to stay in the background
   ; ==============================================================
-  aSw1   vco2 iamp * 0.5, iFq1 * kVib, 0
-  aSw2   vco2 iamp * 0.5, iFq2 * kVib, 0
-  kFcut  = limit(ifreq * (4 + kFiltLFO * 2), 200, 18000)
-  kFres  = 0.30 + kTremLFO * 0.10
-  aSw1f  moogladder aSw1 * aEnv1, kFcut,       kFres
-  aSw2f  moogladder aSw2 * aEnv2, kFcut * 1.01, kFres
-  aS4 = (aSw1f + aSw2f) * 0.30
+  iDtS4    random  0.002, 0.005
+  aSin4a   oscili aEnv1, iFq1*(1+iDtS4)*kVib, giSine
+  aSin4b   oscili aEnv2, iFq2*(1-iDtS4)*kVib, giSine
+  aP4env   expseg 0.001, 0.004, 0.45, iRing*0.40, 0.0001
+  aSin4p   oscili aP4env, iFq1*2.756*kVib,     giSine
+  aS4 = (aSin4a + aSin4b + aSin4p*0.40) * iamp * 0.28
 
   ; ==============================================================
-  ; SOURCE 5: Plucked String — Karplus-Strong algorithm
-  ; Harp / dulcimer / guitar character; natural exponential decay
+  ; SOURCE 5: Narrow noiseband at fundamental
+  ; Very tight BW (~3%) — sounds like a pure tone ±slight breath
   ; ==============================================================
-  aPl1    pluck iamp * 0.35, iFq1 * kVib, iFq1, 0, 1
-  aPl2    pluck iamp * 0.30, iFq2 * kVib, iFq2, 0, 1
-  aPlEnv  expseg 0.001, 0.010, 1.0, iRing*0.55, 0.0001
-  aS5 = (aPl1 + aPl2) * aPlEnv
+  kNB5f   = ifreq * (1 + kFiltLFO * 0.005)
+  kNB5bw  = ifreq * 0.030
+  aNB5    noiseband kNB5f, kNB5bw
+  aNB5env expseg 0.001, 0.010, 1.0, 0.08, 0.40, iRing*0.50, 0.0001
+  aS5 = aNB5 * aNB5env * iamp * 0.55
 
   ; ==============================================================
-  ; SOURCE 6: Bandpass Noise Bell — brushed gong / wind chime
-  ; Uses the noiseband UDO from my_udos.inc for soft, airy texture
-  ; Two bands: fundamental and 2nd inharmonic partial
+  ; SOURCE 6: Narrow noiseband at 2.756x partial
+  ; Classic Chowning bell overtone rendered as resonant noise
+  ; Decays faster than the fundamental band
   ; ==============================================================
-  kBPf   = ifreq * (1 + kFiltLFO * 0.02)
-  kBPbw  = ifreq * 0.06
-  aNz1   noiseband kBPf,        kBPbw
-  aNz2   noiseband kBPf * 2.756, kBPbw * 2
-  aNzEnv expseg 0.001, 0.004, 1.0, 0.06, 0.25, iRing*0.35, 0.0001
-  aS6 = (aNz1 + aNz2) * aNzEnv * iamp * 0.45
+  kNB6f   = ifreq * 2.756 * (1 + kFiltLFO * 0.003)
+  kNB6bw  = ifreq * 0.060
+  aNB6    noiseband kNB6f, kNB6bw
+  aNB6env expseg 0.001, 0.004, 1.0, 0.04, 0.30, iRing*0.28, 0.0001
+  aS6 = aNB6 * aNB6env * iamp * 0.48
 
   ; ==============================================================
-  ; SOURCE 7: AM Bell — amplitude modulation sideband shimmer
-  ; Modulator at a musical sub-frequency creates a rich partial
-  ; structure that breathes and shifts over the note duration
+  ; SOURCE 7: Dual noiseband — fundamental + 5.404x partial
+  ; Two resonant nodes that fade at different rates;
+  ; the upper band is wider for an airy shimmer
   ; ==============================================================
-  iAMf   random 1.5, 8.0
-  aAMc1  oscili aEnv1, iFq1, giSine
-  aAMm1  oscili 0.50,  iAMf, giSine
-  aAMv1  = aAMc1 * (0.50 + aAMm1)
-  aAMc2  oscili aEnv2, iFq2, giSine
-  aAMm2  oscili 0.50,  iAMf * 1.01, giSine
-  aAMv2  = aAMc2 * (0.50 + aAMm2)
-  aS7 = (aAMv1 + aAMv2) * iamp * 0.35
+  kNB7f1  = ifreq * (1 + kFiltLFO * 0.008)
+  kNB7f2  = ifreq * 5.404
+  kNB7bw  = ifreq * 0.040
+  aNB7a   noiseband kNB7f1, kNB7bw
+  aNB7b   noiseband kNB7f2, kNB7bw * 3.0
+  aNB7env expseg 0.001, 0.006, 0.80, 0.05, 0.35, iRing*0.38, 0.0001
+  aS7 = (aNB7a + aNB7b*0.50) * aNB7env * iamp * 0.44
 
   ; ==============================================================
-  ; SOURCE 8: Crystal Bell — 4-voice detuned sine with initial chirp
-  ; Each voice has a staggered envelope for evolving shimmer.
-  ; A brief upward chirp at attack then settles to target pitch.
+  ; SOURCE 8: Wide diffuse noiseband at fundamental
+  ; BW ~18% of fundamental — airy wash, like a bowed wine glass
+  ; Slow attack for a gentle swell character
   ; ==============================================================
-  kChirp expseg ifreq * 1.012, 0.05, ifreq, iRing, ifreq
-  aCr1   oscili aEnv1, iFq1 * (kChirp/ifreq) * kVib, giSine
-  aCr2   oscili aEnv2, iFq2 * (kChirp/ifreq) * kVib, giSine
-  aCr3   oscili aEnv3, iFq3 * (kChirp/ifreq) * kVib, giSine
-  aCr4   oscili aEnv4, iFq4 * (kChirp/ifreq) * kVib, giSine
-  aS8 = (aCr1 + aCr2 + aCr3 + aCr4) * iamp * 0.13
+  kNB8f   = ifreq * (1 + kFiltLFO * 0.015)
+  kNB8bw  = ifreq * 0.180
+  aNB8    noiseband kNB8f, kNB8bw
+  aNB8env expseg 0.001, 0.020, 0.60, 0.10, 0.25, iRing*0.55, 0.0001
+  aS8 = aNB8 * aNB8env * iamp * 0.38
 
   ; ==============================================================
-  ; VEC8 BLEND — trilinear interpolation between all 8 sources
-  ; gkMX/Y/Z wander continuously; tiny offsets between L and R
-  ; channels create a subtle stereo width without hard panning.
+  ; VEC8 BLEND — per-note random corner crossfade
+  ; Two cube corners (each coord ±1) are chosen at note-on.
+  ; linsegr drives an ASR envelope: attack A→B, sustain at B,
+  ; release B→A on note-off.  Tiny L/R offsets add stereo width.
   ; ==============================================================
-  aMixL vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, gkMX,        gkMY,        gkMZ
-  aMixR vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, gkMX+0.015,  gkMY-0.010,  gkMZ+0.012
+
+  ; Pick corner A (coords: one of ±1 per axis)
+  iRxA  random  0, 2
+  iRyA  random  0, 2
+  iRzA  random  0, 2
+  iCxA  =  (iRxA < 1 ? -1 : 1)
+  iCyA  =  (iRyA < 1 ? -1 : 1)
+  iCzA  =  (iRzA < 1 ? -1 : 1)
+
+  ; Pick corner B (independently random)
+  iRxB  random  0, 2
+  iRyB  random  0, 2
+  iRzB  random  0, 2
+  iCxB  =  (iRxB < 1 ? -1 : 1)
+  iCyB  =  (iRyB < 1 ? -1 : 1)
+  iCzB  =  (iRzB < 1 ? -1 : 1)
+
+  ; ASR morph envelope (0 = corner A, 1 = corner B)
+  ; linsegr sustains at 1 until MIDI note-off, then releases to 0
+  iMorphAtt  random  0.4, 2.5
+  iMorphRel  random  0.8, 4.0
+  kMorphEnv  linsegr  0, iMorphAtt, 1, iMorphRel, 0
+
+  ; Interpolate each axis between the two corners
+  kLocalX  =  iCxA + (iCxB - iCxA) * kMorphEnv
+  kLocalY  =  iCyA + (iCyB - iCyA) * kMorphEnv
+  kLocalZ  =  iCzA + (iCzB - iCzA) * kMorphEnv
+
+  aMixL vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kLocalX,        kLocalY,        kLocalZ
+  aMixR vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kLocalX+0.015,  kLocalY-0.010,  kLocalZ+0.012
 
   ; Apply tremolo and stereo pan
   aOutL  = aMixL * kTrem * kPL
