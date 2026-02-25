@@ -105,7 +105,7 @@ instr MetaBell
   ; ---- Bell ring extends well beyond the MIDI note-off ----
   ; xtratim covers: bell decay (iRing) + delay echo tail (~6 s max tap)
   ; + reverbsc tail (0.965 feedback, ~40 s to inaudible)
-  iRing   = 8.0
+  iRing   = 16.0
   xtratim iRing + 50
 
   ; ---- Per-note random seed (time-based: each note differs) ----
@@ -128,10 +128,10 @@ instr MetaBell
 
   ; ---- Staggered per-voice envelopes with humanized attack ----
   ; Successively delayed attacks create a shimmering phasing effect
-  aEnv1 expseg 0.001, iAttBase,         iAmpScale,         0.040, 0.55, iRing, 0.0001
-  aEnv2 expseg 0.001, iAttBase*1.8,     iAmpScale*0.90,    0.050, 0.50, iRing, 0.0001
-  aEnv3 expseg 0.001, iAttBase*2.6,     iAmpScale*0.80,    0.060, 0.45, iRing, 0.0001
-  aEnv4 expseg 0.001, iAttBase*3.4,     iAmpScale*0.70,    0.070, 0.40, iRing, 0.0001
+  aEnv1 expseg 0.001, iAttBase,         iAmpScale,         0.040, 0.90, iRing, 0.0001
+  aEnv2 expseg 0.001, iAttBase*1.8,     iAmpScale*0.90,    0.050, 0.84, iRing, 0.0001
+  aEnv3 expseg 0.001, iAttBase*2.6,     iAmpScale*0.80,    0.060, 0.78, iRing, 0.0001
+  aEnv4 expseg 0.001, iAttBase*3.4,     iAmpScale*0.70,    0.070, 0.72, iRing, 0.0001
 
   ; ---- Free-running per-note LFOs (independent of MIDI CC) ----
   iLR1 random 0.12, 3.50   ; vibrato rate
@@ -343,7 +343,7 @@ instr MasterMix
   aTL5   deltap3 4.236 + kEL5 * 0.020
   ; Low-pass the feedback path to simulate air absorption
   aFbkL  butlp aTL1, 6000
-  delayw gaRevL + aFbkL * 0.38
+  delayw gaRevL + aFbkL * 0.14
 
   ; ---- Multi-tap modulated delay — Right channel ----
   ; Offset tap times for natural stereo spread
@@ -354,18 +354,18 @@ instr MasterMix
   aTR4   deltap3 3.141 + kEL5 * 0.035
   aTR5   deltap3 5.000 + kEL1 * 0.022
   aFbkR  butlp aTR1, 6000
-  delayw gaRevR + aFbkR * 0.38
+  delayw gaRevR + aFbkR * 0.14
 
   ; Weighted tap sum (amplitude decreases with each tap)
-  aEchoL = gaRevL + aTL1*0.38 + aTL2*0.24 + aTL3*0.15 + aTL4*0.09 + aTL5*0.05
-  aEchoR = gaRevR + aTR1*0.38 + aTR2*0.24 + aTR3*0.15 + aTR4*0.09 + aTR5*0.05
+  aEchoL = gaRevL + aTL1*0.16 + aTL2*0.10 + aTL3*0.06 + aTL4*0.03 + aTL5*0.02
+  aEchoR = gaRevR + aTR1*0.16 + aTR2*0.10 + aTR3*0.06 + aTR4*0.03 + aTR5*0.02
 
-  ; ---- Deep plate reverb (large room, very long tail) ----
-  aRevL, aRevR reverbsc aEchoL, aEchoR, 0.965, 8000
+  ; ---- Deep plate reverb (moderate tail) ----
+  aRevL, aRevR reverbsc aEchoL, aEchoR, 0.920, 7000
 
-  ; Wet/dry blend: 30% direct echo + 70% reverb
-  aMixL = aEchoL * 0.90 + aRevL * 0.10
-  aMixR = aEchoR * 0.90 + aRevR * 0.10
+  ; Wet/dry blend: 72% direct echo + 28% reverb
+  aMixL = aEchoL * 0.72 + aRevL * 0.28
+  aMixR = aEchoR * 0.72 + aRevR * 0.28
 
   ; ---- Master lowpass to tame high-frequency harshness ----
   aMixL butlp aMixL, 9000
