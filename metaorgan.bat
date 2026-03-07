@@ -2,24 +2,24 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================
-:: metabell.bat — Render a MIDI file with the MetaBell patch
+:: metaorgan.bat — Render a MIDI file with the MetaOrgan patch
 ::
-:: Usage:   metabell.bat <midifile> [output.wav]
-:: Example: metabell.bat mypiece.mid
-::          metabell.bat mypiece.mid mypiece_bells.wav
+:: Usage:   metaorgan.bat <midifile> [output.wav]
+:: Example: metaorgan.bat mypiece.mid
+::          metaorgan.bat mypiece.mid mypiece_organ.wav
 ::
-:: The MetaBell patch produces ambient bell-chime textures
-:: with deep reverb and elaborate echoes.  Timbre morphs
-:: randomly through 8 sound sources (resonant noise bell, 3-voice
-:: detuned sines, 4-voice wide sines, sines+inharmonic partial,
-:: crystal FM bell, Chowning-partial chorus, rich metallic FM,
-:: diffuse noiseband) via the vec8 opcode — no MIDI CC required.
+:: MetaOrgan produces sustained, morphing organ textures with
+:: 8 timbral sources (flute, principal, full drawbar, reed FM,
+:: celeste, mixture, open pipe, vox humana) blended via vec8.
+:: A Leslie rotating-speaker simulation and large hall reverb
+:: are applied in the mix stage.  Timbre morphs continuously
+:: via MorphController — no MIDI CC needed.
 :: ============================================================
 
 if "%~1"=="" (
     echo.
-    echo  Usage:   metabell.bat ^<midifile^> [output.wav]
-    echo  Example: metabell.bat mypiece.mid
+    echo  Usage:   metaorgan.bat ^<midifile^> [output.wav]
+    echo  Example: metaorgan.bat mypiece.mid
     echo.
     exit /b 1
 )
@@ -34,14 +34,14 @@ if not exist "%MIDIFILE%" (
 )
 
 if "%~2"=="" (
-    set OUTFILE=%~n1_metabell.wav
+    set OUTFILE=%~n1_metaorgan.wav
 ) else (
     set OUTFILE=%~2
 )
 
 echo.
 echo  ================================================
-echo    MetaBell  ^|  Ambient Bell Chime Renderer
+echo    MetaOrgan  ^|  Vectorial Organ Renderer
 echo  ================================================
 echo    Input:   %MIDIFILE%
 echo    Output:  %OUTFILE%
@@ -50,9 +50,9 @@ echo  ================================================
 echo.
 
 :: -T  : terminate when the MIDI file is exhausted
-::       (bell notes ring out via xtratim before stopping)
+::       (xtratim = 8 s covers the reverb tail)
 :: -F  : MIDI file input
-csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metabell.csd"
+csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metaorgan.csd"
 
 if !ERRORLEVEL! neq 0 (
     echo.
@@ -61,13 +61,12 @@ if !ERRORLEVEL! neq 0 (
     exit /b !ERRORLEVEL!
 )
 
-:: Optional: normalize to -14 LUFS with ffmpeg (same pattern
-:: as render_drone.bat in this repo)
+:: Optional: normalize to -14 LUFS and pad 10 s of silence with ffmpeg
 where ffmpeg >nul 2>&1
 if !ERRORLEVEL! equ 0 (
     echo.
     echo  Normalizing to -14 LUFS and adding 10 s silence tail...
-    set NORMFILE=%TEMP%\metabell_norm_%RANDOM%.wav
+    set NORMFILE=%TEMP%\metaorgan_norm_%RANDOM%.wav
     ffmpeg -hide_banner -loglevel warning ^
         -i "%OUTFILE%" ^
         -af "loudnorm=I=-14:TP=-1:LRA=11:print_format=summary,apad=pad_dur=10" ^

@@ -85,7 +85,7 @@ endin
 ; sustains at B, then releases back to A on note-off.
 ;
 ; Source timbres:
-;   S1 - 2-voice detuned sines, very narrow detune
+;   S1 - Resonant noise bell (short noise burst → 4 reson filters at bell partials)
 ;   S2 - 3-voice detuned sines, moderate detune
 ;   S3 - 4-voice detuned sines, wide detune
 ;   S4 - 2-voice detuned sines + quiet inharmonic partial
@@ -155,13 +155,24 @@ instr MetaBell
   kPR  = 0.5 + iPan * 0.5
 
   ; ==============================================================
-  ; SOURCE 1: 2-voice detuned sines — very narrow detune
-  ; Calm, nearly pure tone with a faint beating shimmer
+  ; SOURCE 1: Resonant noise bell
+  ; A brief noise burst excites four narrow-band reson filters tuned
+  ; at Chowning bell-partial ratios (1x, 2.756x, 5.404x, 8.933x).
+  ; The filters ring freely after the burst for a natural struck-bell
+  ; texture.  Higher iHardness → higher Q (sharper, longer ring).
   ; ==============================================================
-  iDtS1   random  0.001, 0.003
-  aSin1a  oscili aEnv1, iFq1*(1+iDtS1)*kVib, giSine
-  aSin1b  oscili aEnv2, iFq2*(1-iDtS1)*kVib, giSine
-  aS1 = (aSin1a + aSin1b) * iamp * 0.36
+  aNoise1  rand    1
+  aExcEnv1 linseg  0, iAttBase*0.5, 1.0, iAttBase*1.5, 0
+  aExcite1 = aNoise1 * aExcEnv1
+  iRNBQ1 = 500 + iHardness * 300
+  iRNBQ2 = 300 + iHardness * 200
+  iRNBQ3 = 150 + iHardness * 100
+  iRNBQ4 =  80 + iHardness *  60
+  aR1   reson aExcite1, ifreq,        ifreq/iRNBQ1, 1
+  aR2   reson aExcite1, ifreq*2.756,  ifreq*2.756/iRNBQ2, 1
+  aR3   reson aExcite1, ifreq*5.404,  ifreq*5.404/iRNBQ3, 1
+  aR4   reson aExcite1, ifreq*8.933,  ifreq*8.933/iRNBQ4, 1
+  aS1 = (aR1 + aR2*0.50 + aR3*0.28 + aR4*0.12) * iamp * 0.38
 
   ; ==============================================================
   ; SOURCE 2: 3-voice detuned sines — moderate detune
