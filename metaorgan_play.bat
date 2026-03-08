@@ -51,6 +51,9 @@ echo    Press Ctrl+C to stop early
 echo  ================================================
 echo.
 
+:: -T  : terminate when the MIDI file is exhausted
+::       (xtratim includes the reverb tail and the internal 10 s buffer)
+:: -F  : MIDI file input
 csound -+rtmidi=null -T -F "%MIDIFILE%" -o %DACTGT% "%~dp0metaorgan.csd"
 
 if !ERRORLEVEL! neq 0 (

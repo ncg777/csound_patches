@@ -50,7 +50,7 @@ echo  ================================================
 echo.
 
 :: -T  : terminate when the MIDI file is exhausted
-::       (bell notes ring out via xtratim before stopping)
+::       (bell notes ring out via xtratim, including the internal 10 s tail)
 :: -F  : MIDI file input
 csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metabell.csd"
 
@@ -62,27 +62,27 @@ if !ERRORLEVEL! neq 0 (
 )
 
 :: Optional: normalize to -14 LUFS with ffmpeg (same pattern
-:: as render_drone.bat in this repo)
+:: as render_drone.bat in this repo). Tail time is rendered by Csound.
 where ffmpeg >nul 2>&1
 if !ERRORLEVEL! equ 0 (
     echo.
-    echo  Normalizing to -14 LUFS and adding 10 s silence tail...
+    echo  Normalizing to -14 LUFS...
     set NORMFILE=%TEMP%\metabell_norm_%RANDOM%.wav
     ffmpeg -hide_banner -loglevel warning ^
         -i "%OUTFILE%" ^
-        -af "loudnorm=I=-14:TP=-1:LRA=11:print_format=summary,apad=pad_dur=10" ^
+        -af "loudnorm=I=-14:TP=-1:LRA=11:print_format=summary" ^
         -ar 48000 ^
         -y "!NORMFILE!" 2>&1
     if !ERRORLEVEL! equ 0 (
         move /y "!NORMFILE!" "%OUTFILE%" >nul
-        echo  Normalized and padded: %OUTFILE%
+        echo  Normalized: %OUTFILE%
     ) else (
         del "!NORMFILE!" 2>nul
         echo  WARNING: ffmpeg post-processing failed; keeping raw render.
     )
 ) else (
     echo.
-    echo  NOTE: Install ffmpeg for -14 LUFS normalization and 10 s silence padding.
+    echo  NOTE: Install ffmpeg for optional -14 LUFS normalization.
 )
 
 echo.

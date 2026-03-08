@@ -53,7 +53,7 @@ echo  ================================================
 echo.
 
 :: -T  : terminate when the MIDI file is exhausted
-::       (bell notes ring out via xtratim before stopping)
+::       (bell notes ring out via xtratim, including the internal 10 s tail)
 :: -F  : MIDI file input
 :: -odac : real-time audio output (no file written)
 csound -+rtmidi=null -T -F "%MIDIFILE%" -o %DACTGT% "%~dp0metabell.csd"

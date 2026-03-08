@@ -13,6 +13,8 @@ ksmps  = 64
 nchnls = 2
 0dbfs  = 1
 
+giRenderTail = 10
+
 ; Route all MIDI channels to MetaBell (use numeric instr number for Csound 6 compatibility)
 ; MetaBell is instr 2 (defined after MorphController)
 massign 0, 2
@@ -104,9 +106,9 @@ instr MetaBell
 
   ; ---- Bell ring extends well beyond the MIDI note-off ----
   ; xtratim covers: bell decay (iRing) + delay echo tail (~6 s max tap)
-  ; + reverbsc tail (0.965 feedback, ~40 s to inaudible)
+  ; + reverbsc tail + an extra 10 s render buffer inside Csound
   iRing   = 16.0
-  xtratim iRing + 50
+  xtratim iRing + 50 + giRenderTail
 
   ; ---- Per-note random seed (time-based: each note differs) ----
   seed 0
@@ -398,7 +400,7 @@ endin
 <CsScore>
 ; MorphController and MasterMix run for up to 2 hours.
 ; With -T flag the performance ends after the last MIDI note
-; rings out (including xtratim extension).
+; rings out, including the internal 10 s render buffer.
 i "MorphController" 0 7200
 i "MasterMix"       0 7200
 

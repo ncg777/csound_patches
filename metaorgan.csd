@@ -13,6 +13,8 @@ ksmps  = 64
 nchnls = 2
 0dbfs  = 1
 
+giRenderTail = 10
+
 ; Route all MIDI channels to MetaOrgan (instr 2, after MorphController)
 massign 0, 2
 ; Lock program-change routing so MIDI program-change events
@@ -99,9 +101,9 @@ instr MetaOrgan
   iamp   = (iVel / 127.0) * 0.32
 
   ; ---- Release time and xtratim ----
-  ; 150 ms release — soft pipe-closing, not jarring
+  ; 150 ms release plus reverb decay and an extra 10 s render buffer
   iRelTime  =  0.150
-  xtratim  iRelTime + 8
+  xtratim  iRelTime + 8 + giRenderTail
 
   ; ---- Per-note random seed (time-seeded: unique for each MIDI event) ----
   seed 0
@@ -389,7 +391,7 @@ endin
 <CsScore>
 ; MorphController and OrganMix run for up to 2 hours.
 ; With -T the performance ends once the last MIDI note
-; rings out (xtratim = 8 s covers the reverb tail).
+; rings out, including the internal 10 s render buffer.
 i "MorphController"  0  7200
 i "OrganMix"         0  7200
 
