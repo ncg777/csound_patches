@@ -102,10 +102,10 @@ instr DigitalBell
   iamp   = (iVel / 127.0) * 0.42
 
   ; ---- Bell ring extends well beyond the MIDI note-off ----
-  ; xtratim covers: bell decay (iRing) + delay echo tail (~6 s max tap)
-  ; + reverbsc tail + an extra 10 s render buffer inside Csound
+  ; xtratim covers: bell decay (iRing) + reverbsc tail
+  ; + an extra 10 s render buffer inside Csound
   iRing   = 16.0
-  xtratim iRing + 50 + giDigitalBellRenderTail
+  xtratim iRing + 30 + giDigitalBellRenderTail
 
   ; ---- Per-note random seed (time-based: each note differs) ----
   seed 0
@@ -328,54 +328,18 @@ endin
 
 ; =======================================================
 ; DigitalBellMix
-; Reads the global accumulation bus, applies a 5-tap
-; dynamically modulated echo (elaborate shimmer), a deep
+; Reads the global accumulation bus, applies a deep
 ; reverbsc, master filtering, soft limiting, and outputs.
 ; Running continuously alongside all bell notes.
 ; =======================================================
 instr DigitalBellMix
-  seed 0
-
-  ; Slow LFOs for modulating echo tap times (creates shimmer)
-  kEL1 oscili 1, 0.130, giSine
-  kEL2 oscili 1, 0.170, giSine
-  kEL3 oscili 1, 0.110, giSine
-  kEL4 oscili 1, 0.230, giSine
-  kEL5 oscili 1, 0.071, giSine
-
-  ; ---- Multi-tap modulated delay — Left channel ----
-  ; Tap spacing follows near-Fibonacci ratios (avoids comb peaks)
-  aBufL  delayr 6.5
-  aTL1   deltap3 0.317 + kEL1 * 0.012
-  aTL2   deltap3 0.721 + kEL2 * 0.018
-  aTL3   deltap3 1.331 + kEL3 * 0.025
-  aTL4   deltap3 2.618 + kEL4 * 0.030
-  aTL5   deltap3 4.236 + kEL5 * 0.020
-  ; Low-pass the feedback path to simulate air absorption
-  aFbkL  butlp aTL1, 6000
-  delayw gaDigitalBellRevL + aFbkL * 0.14
-
-  ; ---- Multi-tap modulated delay — Right channel ----
-  ; Offset tap times for natural stereo spread
-  aBufR  delayr 6.5
-  aTR1   deltap3 0.423 + kEL2 * 0.015
-  aTR2   deltap3 0.891 + kEL3 * 0.020
-  aTR3   deltap3 1.618 + kEL4 * 0.028
-  aTR4   deltap3 3.141 + kEL5 * 0.035
-  aTR5   deltap3 5.000 + kEL1 * 0.022
-  aFbkR  butlp aTR1, 6000
-  delayw gaDigitalBellRevR + aFbkR * 0.14
-
-  ; Weighted tap sum (amplitude decreases with each tap)
-  aEchoL = gaDigitalBellRevL + aTL1*0.16 + aTL2*0.10 + aTL3*0.06 + aTL4*0.03 + aTL5*0.02
-  aEchoR = gaDigitalBellRevR + aTR1*0.16 + aTR2*0.10 + aTR3*0.06 + aTR4*0.03 + aTR5*0.02
 
   ; ---- Deep plate reverb (moderate tail) ----
-  aRevL, aRevR reverbsc aEchoL, aEchoR, 0.920, 7000
+  aRevL, aRevR reverbsc gaDigitalBellRevL, gaDigitalBellRevR, 0.920, 7000
 
-  ; Wet/dry blend: 72% direct echo + 28% reverb
-  aMixL = aEchoL * 0.72 + aRevL * 0.28
-  aMixR = aEchoR * 0.72 + aRevR * 0.28
+  ; Wet/dry blend: 72% direct + 28% reverb
+  aMixL = gaDigitalBellRevL * 0.72 + aRevL * 0.28
+  aMixR = gaDigitalBellRevR * 0.72 + aRevR * 0.28
 
   ; ---- Master lowpass to tame high-frequency harshness ----
   aMixL butlp aMixL, 9000
