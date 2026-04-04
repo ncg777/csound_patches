@@ -1,52 +1,51 @@
-<CsoundSynthesizer>
-<CsOptions>
-; Usage: csound -T -F input.mid -o output.wav metaorgan.csd
-; Companion script: metaorgan.bat input.mid [output.wav]
-; 32-bit float WAV avoids int16 scaling issues with 0dbfs=1
---format=float
-</CsOptions>
+; -------------------------------------------------------
+; digitalorgan.inc — DigitalOrgan patch (importable)
+;
+; Sustained, morphing organ textures with 8 timbral sources
+; (flute, principal, full drawbar, reed FM, celeste, mixture,
+; open pipe, vox humana) blended via vec8.  A Leslie
+; rotating-speaker simulation and large hall reverb are
+; applied in the mix stage.
+;
+; Standalone (all MIDI channels routed to this patch):
+;   #include "digitalorgan.inc"
+;
+; Multi-patch (route a specific MIDI channel):
+;   #define DIGITALORGAN_CHANNEL #5#
+;   #include "digitalorgan.inc"
+;
+; Score lines required:
+;   i "DigitalOrganMorphCtl"  0  <duration>
+;   i "DigitalOrganMix"       0  <duration>
+; -------------------------------------------------------
 
-<CsInstruments>
-
-sr     = 48000
-ksmps  = 64
-nchnls = 2
-0dbfs  = 1
-
-giRenderTail = 10
-
-; Route all MIDI channels to MetaOrgan (instr 2, after MorphController)
-massign 0, 2
-; Lock program-change routing so MIDI program-change events
-; cannot silently redirect notes away from MetaOrgan.
-pgmassign 0, 2
-
+; -- Shared dependencies (include-guarded) --
+#ifndef __MY_UDOS__
+#define __MY_UDOS__
 #include "my_udos.inc"
+#end
 
-; Sine wave table
-giSine  ftgen  0, 0, 65536, 10, 1
+#ifndef __GISINE__
+#define __GISINE__
+giSine ftgen 0, 0, 65536, 10, 1
+#end
 
-; -------------------------------------------------------
-; Global morph coordinates for vec8
-; Driven by MorphController, read by every MetaOrgan voice
-; -------------------------------------------------------
-gkMX  init  0
-gkMY  init  0
-gkMZ  init  0
+; -- Patch-specific globals --
+giDigitalOrganRenderTail = 10
 
-; -------------------------------------------------------
-; Global stereo accumulation bus
-; MetaOrgan voices write here; OrganMix reads and clears
-; -------------------------------------------------------
-gaRevL  init  0
-gaRevR  init  0
+gkDigitalOrganMX init 0
+gkDigitalOrganMY init 0
+gkDigitalOrganMZ init 0
+
+gaDigitalOrganRevL init 0
+gaDigitalOrganRevR init 0
 
 ; =======================================================
-; MorphController
-; Same three-scale jspline orbit as MetaBell — drives the
-; global morph coordinates with chaotic non-repeating motion.
+; DigitalOrganMorphCtl
+; Three-scale jspline orbit — drives the global morph
+; coordinates with chaotic non-repeating motion.
 ; =======================================================
-instr MorphController
+instr DigitalOrganMorphCtl
   seed 0
 
   kG1  jspline  0.65, 0.0015, 0.010
@@ -66,13 +65,13 @@ instr MorphController
   kRY  =  kG2 + kS2 + kW2 + tanh(kG3*kS1)*0.20 + tanh(kG1*kW3)*0.10
   kRZ  =  kG3 + kS3 + kW3 + tanh(kG1*kS2)*0.20 + tanh(kG2*kW1)*0.10
 
-  gkMX  =  tanh(kRX)
-  gkMY  =  tanh(kRY)
-  gkMZ  =  tanh(kRZ)
+  gkDigitalOrganMX  =  tanh(kRX)
+  gkDigitalOrganMY  =  tanh(kRY)
+  gkDigitalOrganMZ  =  tanh(kRZ)
 endin
 
 ; =======================================================
-; MetaOrgan
+; DigitalOrgan
 ; MIDI-triggered sustained organ tone with 8 morphing
 ; timbres blended via vec8.  Design principles:
 ;
@@ -92,9 +91,9 @@ endin
 ;   S7 - Open pipe: sine tone + chiff noise burst + steady breath
 ;   S8 - Vox Humana: multi-voice tremulant with sub-harmonic FM
 ;
-; Blend: 50% per-note random cube corner + 50% MorphController
+; Blend: 50% per-note random cube corner + 50% DigitalOrganMorphCtl
 ; =======================================================
-instr MetaOrgan
+instr DigitalOrgan
   ; ---- MIDI input ----
   iVel   veloc
   ifreq  cpsmidi
@@ -103,7 +102,7 @@ instr MetaOrgan
   ; ---- Release time and xtratim ----
   ; 150 ms release plus reverb decay and an extra 10 s render buffer
   iRelTime  =  0.150
-  xtratim  iRelTime + 8 + giRenderTail
+  xtratim  iRelTime + 8 + giDigitalOrganRenderTail
 
   ; ---- Per-note random seed (time-seeded: unique for each MIDI event) ----
   seed 0
@@ -214,9 +213,6 @@ instr MetaOrgan
   ; brightness and "sparkle" to the ensemble.  Slight chorus
   ; detuning makes the cluster shimmer rather than clang.
   ; ==============================================================
-  ; Wide detuning on each partial gives the mixture a brilliant shimmer —
-  ; tones near these inharmonic ratios phasebeat against each other,
-  ; producing a glittering quality very unlike the lower octave sources.
   iDtM6    random   0.0035, 0.0075
   aSin6a   oscili   aEnvMain*1.00,  ifreq*4*(1+iDtM6)*kVib,         giSine
   aSin6a2  oscili   aEnvMain*0.70,  ifreq*4*(1-iDtM6*0.80)*kVib,    giSine
@@ -256,10 +252,6 @@ instr MetaOrgan
   ; Four voices at fundamental + octave + 12th add body depth.
   ; The most organic and human-sounding of the 8 sources.
   ; ==============================================================
-  ; Wide detuning creates a choir of voices that beats slowly;
-  ; sub-harmonic FM adds a throat-like formant warmth.
-  ; Stronger per-source tremulant (applied only to S8) makes it
-  ; stand out from the steady additive sources as clearly animate.
   iDtV8a   random   0.0090, 0.0180
   iDtV8b   random   0.0055, 0.0130
   iTremV8  random   4.5, 6.5
@@ -277,7 +269,7 @@ instr MetaOrgan
   ; Three independent jspline LFOs walk the blend coordinates
   ; throughout the entire sustained note (14-40 s sweep period)
   ; so the timbre never stands still.  Tiny L/R offsets add width.
-  ; 50% per-note drift + 50% global MorphController keeps
+  ; 50% per-note drift + 50% global DigitalOrganMorphCtl keeps
   ; individual character while the ensemble morphs together.
   ; ==============================================================
 
@@ -293,10 +285,10 @@ instr MetaOrgan
   kLocalY  =  tanh(kDriftY)
   kLocalZ  =  tanh(kDriftZ)
 
-  ; Blend 50% local cube + 50% global MorphController
-  kBlendX  =  kLocalX*0.5 + gkMX*0.5
-  kBlendY  =  kLocalY*0.5 + gkMY*0.5
-  kBlendZ  =  kLocalZ*0.5 + gkMZ*0.5
+  ; Blend 50% local cube + 50% global DigitalOrganMorphCtl
+  kBlendX  =  kLocalX*0.5 + gkDigitalOrganMX*0.5
+  kBlendY  =  kLocalY*0.5 + gkDigitalOrganMY*0.5
+  kBlendZ  =  kLocalZ*0.5 + gkDigitalOrganMZ*0.5
 
   aMixL  vec8  aS1,aS2,aS3,aS4,aS5,aS6,aS7,aS8,  kBlendX,        kBlendY,        kBlendZ
   aMixR  vec8  aS1,aS2,aS3,aS4,aS5,aS6,aS7,aS8,  kBlendX+0.015,  kBlendY-0.010,  kBlendZ+0.012
@@ -305,12 +297,12 @@ instr MetaOrgan
   aOutL  =  aMixL * kTremAmp * kPL
   aOutR  =  aMixR * kTremAmp * kPR
 
-  gaRevL  =  gaRevL + aOutL
-  gaRevR  =  gaRevR + aOutR
+  gaDigitalOrganRevL  =  gaDigitalOrganRevL + aOutL
+  gaDigitalOrganRevR  =  gaDigitalOrganRevR + aOutR
 endin
 
 ; =======================================================
-; OrganMix
+; DigitalOrganMix
 ; Reads the global accumulation bus and applies:
 ;
 ;   1. Leslie rotating-speaker simulation
@@ -326,7 +318,7 @@ endin
 ;
 ;   3. Master low-pass (12 kHz) + soft tanh(1.5x) limiter
 ; =======================================================
-instr OrganMix
+instr DigitalOrganMix
   seed 0
 
   ; ---- Leslie speed: locked to chorale regime (0.6-1.2 Hz horn) ----
@@ -348,17 +340,17 @@ instr OrganMix
   ; adds subtle warmth rather than obvious pitch wobble.
   aBufHornL  delayr  0.025
   aHornTapL  deltap3  0.008 + kHornAmpL*0.0012
-  delayw gaRevL
+  delayw gaDigitalOrganRevL
 
   aBufHornR  delayr  0.025
   aHornTapR  deltap3  0.008 + kHornAmpR*0.0012
-  delayw gaRevR
+  delayw gaDigitalOrganRevR
 
   ; ---- HP/LP split: horn vs rotor bands ----
   aHiL  buthp  aHornTapL, 800     ; horn band: gets Doppler + AM
-  aLoL  butlp  gaRevL,    800     ; rotor band: direct signal + AM only
+  aLoL  butlp  gaDigitalOrganRevL,    800     ; rotor band: direct signal + AM only
   aHiR  buthp  aHornTapR, 800
-  aLoR  butlp  gaRevR,    800
+  aLoR  butlp  gaDigitalOrganRevR,    800
 
   ; ---- Apply Leslie amplitude modulation — gentle chorale depth ----
   aMixL  =  aHiL*(1 + kHornAmpL*0.09)   +  aLoL*(1 + kRotorAmpL*0.05)
@@ -371,7 +363,7 @@ instr OrganMix
   aMixL  =  aMixL*0.60 + aRevL*0.40
   aMixR  =  aMixR*0.60 + aRevR*0.40
 
-  ; ---- Master low-pass (brighter cutoff than MetaBell) ----
+  ; ---- Master low-pass ----
   aMixL  butlp  aMixL, 12000
   aMixR  butlp  aMixR, 12000
 
@@ -382,23 +374,14 @@ instr OrganMix
   outs  aOutL, aOutR
 
   ; Clear global bus each k-cycle
-  gaRevL  =  0
-  gaRevR  =  0
+  gaDigitalOrganRevL  =  0
+  gaDigitalOrganRevR  =  0
 endin
 
-</CsInstruments>
-
-<CsScore>
-; MorphController and OrganMix run for up to 2 hours.
-; With -T the performance ends once the last MIDI note
-; rings out, including the internal 10 s render buffer.
-i "MorphController"  0  7200
-i "OrganMix"         0  7200
-
-; Keep score alive; -T governs actual end time
-f 0 7200
-
-e
-</CsScore>
-
-</CsoundSynthesizer>
+; -- MIDI channel routing --
+#ifdef DIGITALORGAN_CHANNEL
+massign $DIGITALORGAN_CHANNEL, "DigitalOrgan"
+#else
+massign 0, "DigitalOrgan"
+pgmassign 0, "DigitalOrgan"
+#end

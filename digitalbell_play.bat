@@ -2,11 +2,11 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================
-:: metaorgan_play.bat — Play a MIDI file in real time via MetaOrgan
+:: digitalbell_play.bat — Play a MIDI file in real time via DigitalBell
 ::
-:: Usage:   metaorgan_play.bat <midifile> [dac_device]
-:: Example: metaorgan_play.bat mypiece.mid
-::          metaorgan_play.bat mypiece.mid 1
+:: Usage:   digitalbell_play.bat <midifile> [dac_device]
+:: Example: digitalbell_play.bat mypiece.mid
+::          digitalbell_play.bat mypiece.mid 1
 ::
 :: dac_device is an optional integer audio device index.
 :: Run  csound --devices  to list available output devices.
@@ -16,9 +16,9 @@ setlocal enabledelayedexpansion
 
 if "%~1"=="" (
     echo.
-    echo  Usage:   metaorgan_play.bat ^<midifile^> [dac_device]
-    echo  Example: metaorgan_play.bat mypiece.mid
-    echo           metaorgan_play.bat mypiece.mid 1
+    echo  Usage:   digitalbell_play.bat ^<midifile^> [dac_device]
+    echo  Example: digitalbell_play.bat mypiece.mid
+    echo           digitalbell_play.bat mypiece.mid 1
     echo.
     echo  Run  csound --devices  to list audio output devices.
     echo.
@@ -34,6 +34,7 @@ if not exist "%MIDIFILE%" (
     exit /b 1
 )
 
+:: Build DAC target: default (dac) or numbered device (dac:N)
 if "%~2"=="" (
     set DACTGT=dac
 ) else (
@@ -42,7 +43,7 @@ if "%~2"=="" (
 
 echo.
 echo  ================================================
-echo    MetaOrgan  ^|  Real-time MIDI Playback
+echo    DigitalBell  ^|  Real-time MIDI Playback
 echo  ================================================
 echo    Input:   %MIDIFILE%
 echo    Output:  %DACTGT%
@@ -52,9 +53,10 @@ echo  ================================================
 echo.
 
 :: -T  : terminate when the MIDI file is exhausted
-::       (xtratim includes the reverb tail and the internal 10 s buffer)
+::       (bell notes ring out via xtratim, including the internal 10 s tail)
 :: -F  : MIDI file input
-csound -+rtmidi=null -T -F "%MIDIFILE%" -o %DACTGT% "%~dp0metaorgan.csd"
+:: -odac : real-time audio output (no file written)
+csound -+rtmidi=null -T -F "%MIDIFILE%" -o %DACTGT% "%~dp0digitalbell.csd"
 
 if !ERRORLEVEL! neq 0 (
     echo.

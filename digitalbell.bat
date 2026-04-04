@@ -2,13 +2,13 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================
-:: metabell.bat — Render a MIDI file with the MetaBell patch
+:: digitalbell.bat — Render a MIDI file with the DigitalBell patch
 ::
-:: Usage:   metabell.bat <midifile> [output.wav]
-:: Example: metabell.bat mypiece.mid
-::          metabell.bat mypiece.mid mypiece_bells.wav
+:: Usage:   digitalbell.bat <midifile> [output.wav]
+:: Example: digitalbell.bat mypiece.mid
+::          digitalbell.bat mypiece.mid mypiece_bells.wav
 ::
-:: The MetaBell patch produces ambient bell-chime textures
+:: The DigitalBell patch produces ambient bell-chime textures
 :: with deep reverb and elaborate echoes.  Timbre morphs
 :: randomly through 8 sound sources (resonant noise bell, 3-voice
 :: detuned sines, 4-voice wide sines, sines+inharmonic partial,
@@ -18,8 +18,8 @@ setlocal enabledelayedexpansion
 
 if "%~1"=="" (
     echo.
-    echo  Usage:   metabell.bat ^<midifile^> [output.wav]
-    echo  Example: metabell.bat mypiece.mid
+    echo  Usage:   digitalbell.bat ^<midifile^> [output.wav]
+    echo  Example: digitalbell.bat mypiece.mid
     echo.
     exit /b 1
 )
@@ -34,14 +34,14 @@ if not exist "%MIDIFILE%" (
 )
 
 if "%~2"=="" (
-    set OUTFILE=%~n1_metabell.wav
+    set OUTFILE=%~n1_digitalbell.wav
 ) else (
     set OUTFILE=%~2
 )
 
 echo.
 echo  ================================================
-echo    MetaBell  ^|  Ambient Bell Chime Renderer
+echo    DigitalBell  ^|  Ambient Bell Chime Renderer
 echo  ================================================
 echo    Input:   %MIDIFILE%
 echo    Output:  %OUTFILE%
@@ -52,7 +52,7 @@ echo.
 :: -T  : terminate when the MIDI file is exhausted
 ::       (bell notes ring out via xtratim, including the internal 10 s tail)
 :: -F  : MIDI file input
-csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metabell.csd"
+csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0digitalbell.csd"
 
 if !ERRORLEVEL! neq 0 (
     echo.
@@ -67,7 +67,7 @@ where ffmpeg >nul 2>&1
 if !ERRORLEVEL! equ 0 (
     echo.
     echo  Normalizing to -14 LUFS...
-    set NORMFILE=%TEMP%\metabell_norm_%RANDOM%.wav
+    set NORMFILE=%TEMP%\digitalbell_norm_%RANDOM%.wav
     ffmpeg -hide_banner -loglevel warning ^
         -i "%OUTFILE%" ^
         -af "loudnorm=I=-14:TP=-1:LRA=11:print_format=summary" ^

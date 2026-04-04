@@ -42,7 +42,7 @@ gaDigitalPadAccR init 0
 
 ; =======================================================
 ; DigitalPadMorphCtl
-; Slower, more sweeping movement than MetaOrgan — suited
+; Slower, more sweeping movement than DigitalOrgan — suited
 ; to long evolving pad textures.  Three-scale jspline orbit
 ; with glacial drift rates for deep ambient evolution.
 ; =======================================================
@@ -293,7 +293,7 @@ instr DigitalPad
 
   ; ==============================================================
   ; VEC8 BLEND — continuous per-note timbral drift
-  ; Slower drift rates than MetaOrgan for gradual evolution.
+  ; Slower drift rates than DigitalOrgan for gradual evolution.
   ; 50% per-note drift + 50% global DigitalPadMorphCtl.
   ; ==============================================================
   iMRa  random  0.025, 0.080
