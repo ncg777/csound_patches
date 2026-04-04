@@ -2,24 +2,24 @@
 setlocal enabledelayedexpansion
 
 :: ============================================================
-:: metaorgan.bat — Render a MIDI file with the MetaOrgan patch
+:: digitalorgan.bat — Render a MIDI file with the DigitalOrgan patch
 ::
-:: Usage:   metaorgan.bat <midifile> [output.wav]
-:: Example: metaorgan.bat mypiece.mid
-::          metaorgan.bat mypiece.mid mypiece_organ.wav
+:: Usage:   digitalorgan.bat <midifile> [output.wav]
+:: Example: digitalorgan.bat mypiece.mid
+::          digitalorgan.bat mypiece.mid mypiece_organ.wav
 ::
-:: MetaOrgan produces sustained, morphing organ textures with
+:: DigitalOrgan produces sustained, morphing organ textures with
 :: 8 timbral sources (flute, principal, full drawbar, reed FM,
 :: celeste, mixture, open pipe, vox humana) blended via vec8.
 :: A Leslie rotating-speaker simulation and large hall reverb
 :: are applied in the mix stage.  Timbre morphs continuously
-:: via MorphController — no MIDI CC needed.
+:: via DigitalOrganMorphCtl — no MIDI CC needed.
 :: ============================================================
 
 if "%~1"=="" (
     echo.
-    echo  Usage:   metaorgan.bat ^<midifile^> [output.wav]
-    echo  Example: metaorgan.bat mypiece.mid
+    echo  Usage:   digitalorgan.bat ^<midifile^> [output.wav]
+    echo  Example: digitalorgan.bat mypiece.mid
     echo.
     exit /b 1
 )
@@ -34,14 +34,14 @@ if not exist "%MIDIFILE%" (
 )
 
 if "%~2"=="" (
-    set OUTFILE=%~n1_metaorgan.wav
+    set OUTFILE=%~n1_digitalorgan.wav
 ) else (
     set OUTFILE=%~2
 )
 
 echo.
 echo  ================================================
-echo    MetaOrgan  ^|  Vectorial Organ Renderer
+echo    DigitalOrgan  ^|  Vectorial Organ Renderer
 echo  ================================================
 echo    Input:   %MIDIFILE%
 echo    Output:  %OUTFILE%
@@ -52,7 +52,7 @@ echo.
 :: -T  : terminate when the MIDI file is exhausted
 ::       (xtratim includes the reverb tail and the internal 10 s buffer)
 :: -F  : MIDI file input
-csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0metaorgan.csd"
+csound -+rtmidi=null -T -F "%MIDIFILE%" -o "%OUTFILE%" "%~dp0digitalorgan.csd"
 
 if !ERRORLEVEL! neq 0 (
     echo.
@@ -66,7 +66,7 @@ where ffmpeg >nul 2>&1
 if !ERRORLEVEL! equ 0 (
     echo.
     echo  Normalizing to -14 LUFS...
-    set NORMFILE=%TEMP%\metaorgan_norm_%RANDOM%.wav
+    set NORMFILE=%TEMP%\digitalorgan_norm_%RANDOM%.wav
     ffmpeg -hide_banner -loglevel warning ^
         -i "%OUTFILE%" ^
         -af "loudnorm=I=-14:TP=-1:LRA=11:print_format=summary" ^

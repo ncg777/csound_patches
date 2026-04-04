@@ -1,56 +1,52 @@
-<CsoundSynthesizer>
-<CsOptions>
-; Usage: csound -T -F input.mid -o output.wav metabell.csd
-; Companion script: metabell.bat input.mid [output.wav]
-; 32-bit float WAV avoids int16 scaling issues with 0dbfs=1
---format=float
-</CsOptions>
+; -------------------------------------------------------
+; digitalbell.inc — DigitalBell patch (importable)
+;
+; Ambient bell chime with 8 morphing sound sources,
+; 4-voice dynamic unison, per-note free-running LFOs, and
+; resonant noiseband components.  Multi-tap modulated echo
+; and deep reverb create elaborate shimmer tails.
+;
+; Standalone (all MIDI channels routed to this patch):
+;   #include "digitalbell.inc"
+;
+; Multi-patch (route a specific MIDI channel):
+;   #define DIGITALBELL_CHANNEL #3#
+;   #include "digitalbell.inc"
+;
+; Score lines required:
+;   i "DigitalBellMorphCtl"  0  <duration>
+;   i "DigitalBellMix"       0  <duration>
+; -------------------------------------------------------
 
-<CsInstruments>
-
-sr     = 48000
-ksmps  = 64
-nchnls = 2
-0dbfs  = 1
-A4     = 432
-
-giRenderTail = 10
-
-; Route all MIDI channels to MetaBell (use numeric instr number for Csound 6 compatibility)
-; MetaBell is instr 2 (defined after MorphController)
-massign 0, 2
-; Lock program-change routing to MetaBell so program-change events in the
-; MIDI file (e.g. "C0 00") cannot silently redirect notes to instr 1.
-pgmassign 0, 2
-
+; -- Shared dependencies (include-guarded) --
+#ifndef __MY_UDOS__
+#define __MY_UDOS__
 #include "my_udos.inc"
+#end
 
-; Sine wave table (referenced by name giSine)
+#ifndef __GISINE__
+#define __GISINE__
 giSine ftgen 0, 0, 65536, 10, 1
+#end
 
-; -------------------------------------------------------
-; Global morph coordinates for vec8 (updated each k-period
-; by MorphController, consumed by every MetaBell instance)
-; -------------------------------------------------------
-gkMX init 0
-gkMY init 0
-gkMZ init 0
+; -- Patch-specific globals --
+giDigitalBellRenderTail = 10
 
-; -------------------------------------------------------
-; Global stereo accumulation bus
-; MetaBell instances write here; MasterMix reads and clears
-; -------------------------------------------------------
-gaRevL init 0
-gaRevR init 0
+gkDigitalBellMX init 0
+gkDigitalBellMY init 0
+gkDigitalBellMZ init 0
+
+gaDigitalBellRevL init 0
+gaDigitalBellRevR init 0
 
 ; =======================================================
-; MorphController
-; Drives gkMX/Y/Z with three-scale jspline chaos so the
-; timbre morphs continuously without any MIDI CC input.
-; The cross-coupled tanh terms create orbital trajectories
-; that never repeat.
+; DigitalBellMorphCtl
+; Drives gkDigitalBellMX/Y/Z with three-scale jspline chaos
+; so the timbre morphs continuously without any MIDI CC
+; input.  The cross-coupled tanh terms create orbital
+; trajectories that never repeat.
 ; =======================================================
-instr MorphController
+instr DigitalBellMorphCtl
   seed 0                              ; time-seeded — unique every run
 
   ; Glacial layer: ~100-700 s per cycle
@@ -74,13 +70,13 @@ instr MorphController
   kRZ = kG3 + kS3 + kW3 + tanh(kG1*kS2)*0.30 + tanh(kG2*kW1)*0.15
 
   ; Soft-clip to [-1, 1]
-  gkMX = tanh(kRX)
-  gkMY = tanh(kRY)
-  gkMZ = tanh(kRZ)
+  gkDigitalBellMX = tanh(kRX)
+  gkDigitalBellMY = tanh(kRY)
+  gkDigitalBellMZ = tanh(kRZ)
 endin
 
 ; =======================================================
-; MetaBell
+; DigitalBell
 ; MIDI-triggered bell chime with 8 morphing sound sources,
 ; 4-voice dynamic unison, per-note free-running LFOs, and
 ; resonant noiseband components.  Each note picks two random
@@ -96,10 +92,10 @@ endin
 ;   S6 - Sine chorus at 2.756x + root, per-source vibrato/tremolo LFOs
 ;   S7 - Rich metallic FM (3.5x + sqrt(2) modulators, stacked operators)
 ;   S8 - Wide diffuse noiseband at fundamental (airy wash)
-; Blend: 50% per-note random cube coords + 50% global MorphController
+; Blend: 50% per-note random cube coords + 50% global DigitalBellMorphCtl
 ; Attack: humanized per-note (iHardness 0=silky smooth, 1=hard percussive)
 ; =======================================================
-instr MetaBell
+instr DigitalBell
   ; ---- MIDI input ----
   iVel   veloc
   ifreq  cpsmidi
@@ -109,7 +105,7 @@ instr MetaBell
   ; xtratim covers: bell decay (iRing) + delay echo tail (~6 s max tap)
   ; + reverbsc tail + an extra 10 s render buffer inside Csound
   iRing   = 16.0
-  xtratim iRing + 50 + giRenderTail
+  xtratim iRing + 50 + giDigitalBellRenderTail
 
   ; ---- Per-note random seed (time-based: each note differs) ----
   seed 0
@@ -313,10 +309,10 @@ instr MetaBell
   kLocalY  =  iCyA + (iCyB - iCyA) * kMorphEnv
   kLocalZ  =  iCzA + (iCzB - iCzA) * kMorphEnv
 
-  ; Blend per-note cube coords (50%) with global MorphController (50%)
-  kBlendX = kLocalX * 0.5 + gkMX * 0.5
-  kBlendY = kLocalY * 0.5 + gkMY * 0.5
-  kBlendZ = kLocalZ * 0.5 + gkMZ * 0.5
+  ; Blend per-note cube coords (50%) with global DigitalBellMorphCtl (50%)
+  kBlendX = kLocalX * 0.5 + gkDigitalBellMX * 0.5
+  kBlendY = kLocalY * 0.5 + gkDigitalBellMY * 0.5
+  kBlendZ = kLocalZ * 0.5 + gkDigitalBellMZ * 0.5
 
   aMixL vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kBlendX,        kBlendY,        kBlendZ
   aMixR vec8 aS1, aS2, aS3, aS4, aS5, aS6, aS7, aS8, kBlendX+0.015,  kBlendY-0.010,  kBlendZ+0.012
@@ -325,19 +321,19 @@ instr MetaBell
   aOutL  = aMixL * kTrem * kPL
   aOutR  = aMixR * kTrem * kPR
 
-  ; Accumulate into global bus for MasterMix
-  gaRevL = gaRevL + aOutL
-  gaRevR = gaRevR + aOutR
+  ; Accumulate into global bus for DigitalBellMix
+  gaDigitalBellRevL = gaDigitalBellRevL + aOutL
+  gaDigitalBellRevR = gaDigitalBellRevR + aOutR
 endin
 
 ; =======================================================
-; MasterMix
+; DigitalBellMix
 ; Reads the global accumulation bus, applies a 5-tap
 ; dynamically modulated echo (elaborate shimmer), a deep
 ; reverbsc, master filtering, soft limiting, and outputs.
 ; Running continuously alongside all bell notes.
 ; =======================================================
-instr MasterMix
+instr DigitalBellMix
   seed 0
 
   ; Slow LFOs for modulating echo tap times (creates shimmer)
@@ -357,7 +353,7 @@ instr MasterMix
   aTL5   deltap3 4.236 + kEL5 * 0.020
   ; Low-pass the feedback path to simulate air absorption
   aFbkL  butlp aTL1, 6000
-  delayw gaRevL + aFbkL * 0.14
+  delayw gaDigitalBellRevL + aFbkL * 0.14
 
   ; ---- Multi-tap modulated delay — Right channel ----
   ; Offset tap times for natural stereo spread
@@ -368,11 +364,11 @@ instr MasterMix
   aTR4   deltap3 3.141 + kEL5 * 0.035
   aTR5   deltap3 5.000 + kEL1 * 0.022
   aFbkR  butlp aTR1, 6000
-  delayw gaRevR + aFbkR * 0.14
+  delayw gaDigitalBellRevR + aFbkR * 0.14
 
   ; Weighted tap sum (amplitude decreases with each tap)
-  aEchoL = gaRevL + aTL1*0.16 + aTL2*0.10 + aTL3*0.06 + aTL4*0.03 + aTL5*0.02
-  aEchoR = gaRevR + aTR1*0.16 + aTR2*0.10 + aTR3*0.06 + aTR4*0.03 + aTR5*0.02
+  aEchoL = gaDigitalBellRevL + aTL1*0.16 + aTL2*0.10 + aTL3*0.06 + aTL4*0.03 + aTL5*0.02
+  aEchoR = gaDigitalBellRevR + aTR1*0.16 + aTR2*0.10 + aTR3*0.06 + aTR4*0.03 + aTR5*0.02
 
   ; ---- Deep plate reverb (moderate tail) ----
   aRevL, aRevR reverbsc aEchoL, aEchoR, 0.920, 7000
@@ -392,23 +388,14 @@ instr MasterMix
   outs aOutL, aOutR
 
   ; Clear global bus each k-cycle
-  gaRevL = 0
-  gaRevR = 0
+  gaDigitalBellRevL = 0
+  gaDigitalBellRevR = 0
 endin
 
-</CsInstruments>
-
-<CsScore>
-; MorphController and MasterMix run for up to 2 hours.
-; With -T flag the performance ends after the last MIDI note
-; rings out, including the internal 10 s render buffer.
-i "MorphController" 0 7200
-i "MasterMix"       0 7200
-
-; Keep score alive; -T in the bat script governs actual end time
-f 0 7200
-
-e
-</CsScore>
-
-</CsoundSynthesizer>
+; -- MIDI channel routing --
+#ifdef DIGITALBELL_CHANNEL
+massign $DIGITALBELL_CHANNEL, "DigitalBell"
+#else
+massign 0, "DigitalBell"
+pgmassign 0, "DigitalBell"
+#end
