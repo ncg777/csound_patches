@@ -19,12 +19,12 @@
 
 ; -- Shared dependencies (include-guarded) --
 #ifndef __MY_UDOS__
-#define __MY_UDOS__
+#define __MY_UDOS__ ##
 #include "my_udos.inc"
 #end
 
 #ifndef __GISINE__
-#define __GISINE__
+#define __GISINE__ ##
 giSine ftgen 0, 0, 65536, 10, 1
 #end
 
