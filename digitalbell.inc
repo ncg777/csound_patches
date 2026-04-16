@@ -1,10 +1,10 @@
 ; -------------------------------------------------------
 ; digitalbell.inc — DigitalBell patch (importable)
 ;
-; Ambient bell chime with 8 morphing sound sources,
-; 4-voice dynamic unison, per-note free-running LFOs, and
-; resonant noiseband components.  Multi-tap modulated echo
-; and deep reverb create elaborate shimmer tails.
+; Glockenspiel / lithophone chime with 8 morphing sound
+; sources, 4-voice tight unison, per-note free-running LFOs,
+; and percussive noiseband transients.  Crisp instant attack
+; on every hit; moderate reverb preserves attack clarity.
 ;
 ; Standalone (all MIDI channels routed to this patch):
 ;   #include "digitalbell.inc"
@@ -77,23 +77,23 @@ endin
 
 ; =======================================================
 ; DigitalBell
-; MIDI-triggered bell chime with 8 morphing sound sources,
-; 4-voice dynamic unison, per-note free-running LFOs, and
-; resonant noiseband components.  Each note picks two random
+; MIDI-triggered glockenspiel/lithophone chime with 8 morphing
+; sound sources, 4-voice tight unison, per-note free-running LFOs,
+; and a percussive noise transient.  Each note picks two random
 ; corners of the vec8 cube and crossfades A→B on attack,
 ; sustains at B, then releases back to A on note-off.
 ;
 ; Source timbres:
-;   S1 - Resonant noise bell (short noise burst → 4 reson filters at bell partials)
-;   S2 - 3-voice detuned sines, moderate detune
-;   S3 - 4-voice detuned sines, wide detune
+;   S1 - Resonant noise bell (ultra-short burst → high-Q reson filters at bell partials)
+;   S2 - 3-voice detuned sines, tight detune
+;   S3 - 4-voice detuned sines, moderate detune
 ;   S4 - 2-voice detuned sines + quiet inharmonic partial
-;   S5 - Crystal FM bell (2:1 ratio, two detuned free-running modulators)
-;   S6 - Sine chorus at 2.756x + root, per-source vibrato/tremolo LFOs
-;   S7 - Rich metallic FM (3.5x + sqrt(2) modulators, stacked operators)
-;   S8 - Wide diffuse noiseband at fundamental (airy wash)
+;   S5 - Crystal FM bell (instant attack, fast index decay, 2:1 ratio)
+;   S6 - Sine chorus at 2.756x + root, minimal vibrato/tremolo
+;   S7 - Rich metallic FM (3.5x + sqrt(2) modulators, instant onset)
+;   S8 - Narrow percussive noiseband at fundamental (stone-tap transient)
 ; Blend: 50% per-note random cube coords + 50% global DigitalBellMorphCtl
-; Attack: humanized per-note (iHardness 0=silky smooth, 1=hard percussive)
+; Attack: always hard percussive — 1 ms onset on all voices
 ; =======================================================
 instr DigitalBell
   ; ---- MIDI input ----
@@ -101,36 +101,36 @@ instr DigitalBell
   ifreq  cpsmidi
   iamp   = (iVel / 127.0) * 0.42
 
-  ; ---- Bell ring extends well beyond the MIDI note-off ----
-  ; xtratim covers: bell decay (iRing) + reverbsc tail
+  ; ---- Bell ring — glockenspiel/lithophone bars sustain but not indefinitely ----
+  ; xtratim covers: bar decay (iRing) + reverbsc tail
   ; + an extra 10 s render buffer inside Csound
-  iRing   = 16.0
-  xtratim iRing + 30 + giDigitalBellRenderTail
+  iRing   = 8.0
+  xtratim iRing + 20 + giDigitalBellRenderTail
 
   ; ---- Per-note random seed (time-based: each note differs) ----
   seed 0
 
-  ; ---- Dynamic unison: 4 detuned voice frequencies ----
-  iDt1 random -0.009,  0.009
-  iDt2 random -0.009,  0.009
-  iDt3 random -0.006,  0.006
-  iDt4 random -0.006,  0.006
+  ; ---- Dynamic unison: 4 tightly detuned voice frequencies (glockenspiel bars are pitch-stable) ----
+  iDt1 random -0.003,  0.003
+  iDt2 random -0.003,  0.003
+  iDt3 random -0.002,  0.002
+  iDt4 random -0.002,  0.002
   iFq1 = ifreq * (1 + iDt1)
   iFq2 = ifreq * (1 + iDt2)
   iFq3 = ifreq * (1 + iDt3)
   iFq4 = ifreq * (1 + iDt4)
 
-  ; ---- Humanized attack: 0 = silky smooth, 1 = hard percussive ----
-  iHardness  random  0, 1
-  iAttBase   = 0.003 + (1 - iHardness) * 0.022   ; 3 ms (hard) -> 25 ms (smooth)
-  iAmpScale  = 0.85 + iHardness * 0.30            ; harder hits punch slightly louder
+  ; ---- Always hard percussive attack — glockenspiel/lithophone mallet strike ----
+  iHardness  = 1                               ; always maximum hardness
+  iAttBase   = 0.001                           ; 1 ms — instantaneous struck transient
+  iAmpScale  = 1.15                            ; hard hits punch louder
 
-  ; ---- Staggered per-voice envelopes with humanized attack ----
-  ; Successively delayed attacks create a shimmering phasing effect
-  aEnv1 expseg 0.001, iAttBase,         iAmpScale,         0.040, 0.90, iRing, 0.0001
-  aEnv2 expseg 0.001, iAttBase*1.8,     iAmpScale*0.90,    0.050, 0.84, iRing, 0.0001
-  aEnv3 expseg 0.001, iAttBase*2.6,     iAmpScale*0.80,    0.060, 0.78, iRing, 0.0001
-  aEnv4 expseg 0.001, iAttBase*3.4,     iAmpScale*0.70,    0.070, 0.72, iRing, 0.0001
+  ; ---- Per-voice envelopes: instant peak, fast bright transient decay, clean long ring ----
+  ; Stagger of 1-4 ms adds subtle metallic shimmer without soft onset
+  aEnv1 expseg 0.001, 0.001, iAmpScale,       0.008, iAmpScale*0.82, iRing, 0.0001
+  aEnv2 expseg 0.001, 0.002, iAmpScale*0.90,  0.008, iAmpScale*0.74, iRing, 0.0001
+  aEnv3 expseg 0.001, 0.003, iAmpScale*0.80,  0.008, iAmpScale*0.65, iRing, 0.0001
+  aEnv4 expseg 0.001, 0.004, iAmpScale*0.70,  0.008, iAmpScale*0.57, iRing, 0.0001
 
   ; ---- Free-running per-note LFOs (independent of MIDI CC) ----
   iLR1 random 0.12, 3.50   ; vibrato rate
@@ -141,12 +141,12 @@ instr DigitalBell
   kTremLFO oscili 1, iLR2, giSine
   kFiltLFO oscili 1, iLR3, giSine
 
-  ; Vibrato factor (subtle pitch wobble)
-  iVibD random 0.002, 0.007
+  ; Vibrato factor (essentially none — glockenspiel/lithophone bars have stable pitch)
+  iVibD random 0.0002, 0.0006
   kVib  = 1 + kVibLFO * iVibD
 
-  ; Amplitude tremolo (soft, 12% depth)
-  kTrem = 1 + kTremLFO * 0.12
+  ; Amplitude tremolo (negligible — keep LFO for subtle organic life at very low depth)
+  kTrem = 1 + kTremLFO * 0.02
 
   ; ---- Per-note stereo pan ----
   iPan random -0.65, 0.65
@@ -154,40 +154,39 @@ instr DigitalBell
   kPR  = 0.5 + iPan * 0.5
 
   ; ==============================================================
-  ; SOURCE 1: Resonant noise bell
-  ; A brief noise burst excites four narrow-band reson filters tuned
-  ; at Chowning bell-partial ratios (1x, 2.756x, 5.404x, 8.933x).
-  ; The filters ring freely after the burst for a natural struck-bell
-  ; texture.  Higher iHardness → higher Q (sharper, longer ring).
+  ; SOURCE 1: Resonant noise bell — mallet-strike transient
+  ; Very short noise burst excites four narrow-band reson filters at
+  ; Chowning bell-partial ratios.  Ultra-short excitation + high Q
+  ; produces the bright instantaneous click of a struck metal bar.
   ; ==============================================================
   aNoise1  rand    1
-  aExcEnv1 linseg  0, iAttBase*0.5, 1.0, iAttBase*1.5, 0
+  aExcEnv1 linseg  0, 0.0003, 1.0, 0.0007, 0    ; 0.3 ms rise, 0.7 ms fall — sharp mallet tap
   aExcite1 = aNoise1 * aExcEnv1
-  iRNBQ1 = 500 + iHardness * 300
-  iRNBQ2 = 300 + iHardness * 200
-  iRNBQ3 = 150 + iHardness * 100
-  iRNBQ4 =  80 + iHardness *  60
+  iRNBQ1 = 900                                   ; very narrow resonance — bright metallic ring
+  iRNBQ2 = 600
+  iRNBQ3 = 300
+  iRNBQ4 = 160
   aR1   reson aExcite1, ifreq,        ifreq/iRNBQ1, 1
   aR2   reson aExcite1, ifreq*2.756,  ifreq*2.756/iRNBQ2, 1
   aR3   reson aExcite1, ifreq*5.404,  ifreq*5.404/iRNBQ3, 1
   aR4   reson aExcite1, ifreq*8.933,  ifreq*8.933/iRNBQ4, 1
-  aS1 = (aR1 + aR2*0.50 + aR3*0.28 + aR4*0.12) * iamp * 0.38
+  aS1 = (aR1 + aR2*0.55 + aR3*0.30 + aR4*0.14) * iamp * 0.45
 
   ; ==============================================================
-  ; SOURCE 2: 3-voice detuned sines — moderate detune
-  ; Richer chorus with a gentle spreading of pitch
+  ; SOURCE 2: 3-voice detuned sines — tight detune
+  ; Minimal pitch spread keeps each hit clean and focused
   ; ==============================================================
-  iDtS2   random  0.003, 0.007
+  iDtS2   random  0.001, 0.003
   aSin2a  oscili aEnv1, iFq1*(1+iDtS2)*kVib, giSine
   aSin2b  oscili aEnv2, iFq2*kVib,            giSine
   aSin2c  oscili aEnv3, iFq3*(1-iDtS2)*kVib, giSine
   aS2 = (aSin2a + aSin2b + aSin2c) * iamp * 0.26
 
   ; ==============================================================
-  ; SOURCE 3: 4-voice detuned sines — wide detune
-  ; Lush, slow-beating cluster across the 4 unison voices
+  ; SOURCE 3: 4-voice detuned sines — reduced detune
+  ; Slight spread adds body without smearing the transient
   ; ==============================================================
-  iDtS3   random  0.006, 0.012
+  iDtS3   random  0.002, 0.005
   aSin3a  oscili aEnv1, iFq1*(1+iDtS3    )*kVib, giSine
   aSin3b  oscili aEnv2, iFq2*(1+iDtS3/3  )*kVib, giSine
   aSin3c  oscili aEnv3, iFq3*(1-iDtS3/3  )*kVib, giSine
@@ -196,10 +195,10 @@ instr DigitalBell
 
   ; ==============================================================
   ; SOURCE 4: 2-voice detuned sines + quiet inharmonic partial
-  ; Adds one Chowning 2.756x overtone for very subtle bell colour
+  ; Adds one Chowning 2.756x overtone for subtle lithophone colour
   ; The partial decays faster to stay in the background
   ; ==============================================================
-  iDtS4    random  0.002, 0.005
+  iDtS4    random  0.001, 0.003
   aSin4a   oscili aEnv1, iFq1*(1+iDtS4)*kVib, giSine
   aSin4b   oscili aEnv2, iFq2*(1-iDtS4)*kVib, giSine
   aP4env   expseg 0.001, 0.004, 0.45, iRing*0.40, 0.0001
@@ -207,73 +206,70 @@ instr DigitalBell
   aS4 = (aSin4a + aSin4b + aSin4p*0.40) * iamp * 0.28
 
   ; ==============================================================
-  ; SOURCE 5: Crystal FM bell — carrier at fundamental, two
-  ; detuned free-running modulators at 2:1 ratio, plus a third
-  ; shimmer operator.  Index decays bright -> crystal -> shimmer.
+  ; SOURCE 5: Crystal FM bell — instant attack, fast index decay
+  ; High initial index creates the sharp bright click on attack;
+  ; index falls quickly so the sustain is clear and crystalline.
   ; ==============================================================
   iMDet5   random   -0.004, 0.004           ; modulator detuning
   iMFreq5a = ifreq * 2.000 * (1 + iMDet5)
   iMFreq5b = ifreq * 2.000 * (1 - iMDet5 * 0.7)
   iMFreq5c = ifreq * 2.003                  ; extra shimmer operator
-  kFMIdx5  linseg   6.0 + iHardness*2.5, iAttBase*5, 1.8, iRing*0.35, 0.28
+  kFMIdx5  linseg   9.0, 0.008, 2.5, iRing*0.30, 0.20
   aFMMod5a oscili   kFMIdx5 * iMFreq5a,             iMFreq5a, giSine
   aFMMod5b oscili   kFMIdx5 * 0.55 * iMFreq5b,      iMFreq5b, giSine
   aFMMod5c oscili   kFMIdx5 * 0.28 * iMFreq5c,      iMFreq5c, giSine
-  aS5env   expseg   0.001, iAttBase, 1.0, 0.06, 0.55, iRing, 0.0001
+  aS5env   expseg   0.001, 0.001, 1.0, 0.010, 0.60, iRing, 0.0001
   aS5a     oscili   aS5env,        ifreq * kVib + aFMMod5a + aFMMod5c, giSine
   aS5b     oscili   aS5env * 0.60, ifreq * kVib + aFMMod5b,            giSine
   aS5 = (aS5a + aS5b) * iamp * 0.44
 
   ; ==============================================================
   ; SOURCE 6: Sine chorus at the 2.756x Chowning partial + root.
-  ; Three voices with independent free-running vibrato and a
-  ; separate per-source tremolo oscillator — each note sounds
-  ; uniquely alive with organic pitch and amplitude movement.
+  ; Independent LFOs kept at very low depth — just enough organic
+  ; life without blurring the crisp bar-instrument articulation.
   ; ==============================================================
   iVibR6a  random   0.15, 0.80
   iVibR6b  random   0.09, 0.55
   iTremR6  random   0.20, 1.20
-  iVibD6   random   0.003, 0.009
+  iVibD6   random   0.0003, 0.0008          ; minimal pitch wobble
   kVib6a   oscili   1, iVibR6a, giSine
   kVib6b   oscili   1, iVibR6b, giSine
   kTrem6   oscili   1, iTremR6, giSine
-  aS6env   expseg   0.001, iAttBase*1.2, 0.90, 0.045, 0.35, iRing*0.35, 0.0001
+  aS6env   expseg   0.001, 0.001, 0.85, 0.010, 0.38, iRing*0.40, 0.0001
   aSin6a   oscili   aS6env,        ifreq * 2.756 * (1 + kVib6a * iVibD6),        giSine
   aSin6b   oscili   aS6env * 0.65, ifreq * 2.758 * (1 + kVib6b * iVibD6 * 0.8),  giSine
   aSin6c   oscili   aS6env * 0.45, ifreq          * (1 + kVib6a * iVibD6 * 0.5),  giSine
-  aS6 = (aSin6a + aSin6b + aSin6c) * (1 + kTrem6 * 0.14) * iamp * 0.40
+  aS6 = (aSin6a + aSin6b + aSin6c) * (1 + kTrem6 * 0.03) * iamp * 0.35
 
   ; ==============================================================
-  ; SOURCE 7: Rich metallic FM — two detuned carriers fed by a
-  ; pair of free-running modulators at inharmonic ratios (~3.5x
-  ; and sqrt(2)x), plus a stacked modulator for dense harmonics.
-  ; Index decays from percussive brightness to warm metallic ring.
+  ; SOURCE 7: Rich metallic FM — instant attack, high initial index
+  ; Bright hard transient on strike, fast decay to warm metallic ring.
   ; ==============================================================
   iMDet7   random   -0.005, 0.005
   iMFreq7a = ifreq * 3.502 * (1 + iMDet7)
   iMFreq7b = ifreq * 3.498 * (1 - iMDet7)
   iMFreq7c = ifreq * 1.41421356              ; sqrt(2) metallic colour
-  kFMIdx7  linseg   4.5 + iHardness*2.0, iAttBase*4, 1.5, iRing*0.40, 0.16
+  kFMIdx7  linseg   7.0, 0.008, 1.8, iRing*0.35, 0.12
   aFMMod7a oscili   kFMIdx7 * iMFreq7a,              iMFreq7a,     giSine
   aFMMod7b oscili   kFMIdx7 * 0.75 * iMFreq7b,       iMFreq7b,     giSine
   aFMMod7c oscili   kFMIdx7 * 0.40 * iMFreq7c,       iMFreq7c,     giSine
   aFMMod7d oscili   kFMIdx7 * 0.28 * iMFreq7a*0.5,   iMFreq7a*0.5, giSine
-  aS7env   expseg   0.001, iAttBase*0.8, 0.80, 0.055, 0.38, iRing, 0.0001
+  aS7env   expseg   0.001, 0.001, 0.80, 0.012, 0.45, iRing, 0.0001
   aS7a     oscili   aS7env,        ifreq * (1 + iMDet7) + aFMMod7a + aFMMod7c, giSine
   aS7b     oscili   aS7env * 0.75, ifreq * (1 - iMDet7) + aFMMod7b,            giSine
   aS7c     oscili   aS7env * 0.45, ifreq                + aFMMod7d,             giSine
   aS7 = (aS7a + aS7b + aS7c) * iamp * 0.36
 
   ; ==============================================================
-  ; SOURCE 8: Wide diffuse noiseband at fundamental
-  ; BW ~18% of fundamental — airy wash, like a bowed wine glass
-  ; Slow attack for a gentle swell character
+  ; SOURCE 8: Narrow percussive noiseband — lithophone stone-tap transient
+  ; BW ~5% of fundamental: tight tonal noise click, very short attack,
+  ; faster decay so it stays as a transient character rather than a wash
   ; ==============================================================
-  kNB8f   = ifreq * (1 + kFiltLFO * 0.015)
-  kNB8bw  = ifreq * 0.180
+  kNB8f   = ifreq * (1 + kFiltLFO * 0.004)
+  kNB8bw  = ifreq * 0.050
   aNB8    noiseband kNB8f, kNB8bw
-  aNB8env expseg 0.001, 0.020, 0.60, 0.10, 0.25, iRing*0.55, 0.0001
-  aS8 = aNB8 * aNB8env * iamp * 0.38
+  aNB8env expseg 0.001, 0.001, 0.50, 0.008, 0.22, iRing*0.30, 0.0001
+  aS8 = aNB8 * aNB8env * iamp * 0.30
 
   ; ==============================================================
   ; VEC8 BLEND — per-note random corner crossfade
@@ -334,16 +330,16 @@ endin
 ; =======================================================
 instr DigitalBellMix
 
-  ; ---- Deep plate reverb (moderate tail) ----
-  aRevL, aRevR reverbsc gaDigitalBellRevL, gaDigitalBellRevR, 0.920, 7000
+  ; ---- Plate reverb (shorter tail — glockenspiel is drier than ambient bells) ----
+  aRevL, aRevR reverbsc gaDigitalBellRevL, gaDigitalBellRevR, 0.820, 10000
 
-  ; Wet/dry blend: 72% direct + 28% reverb
-  aMixL = gaDigitalBellRevL * 0.72 + aRevL * 0.28
-  aMixR = gaDigitalBellRevR * 0.72 + aRevR * 0.28
+  ; Wet/dry blend: 86% direct + 14% reverb — keep the crisp attack in front
+  aMixL = gaDigitalBellRevL * 0.86 + aRevL * 0.14
+  aMixR = gaDigitalBellRevR * 0.86 + aRevR * 0.14
 
-  ; ---- Master lowpass to tame high-frequency harshness ----
-  aMixL butlp aMixL, 9000
-  aMixR butlp aMixR, 9000
+  ; ---- Master lowpass — raised to preserve glockenspiel brightness ----
+  aMixL butlp aMixL, 14000
+  aMixR butlp aMixR, 14000
 
   ; ---- Soft limiter ----
   aOutL = tanh(aMixL * 1.5)
