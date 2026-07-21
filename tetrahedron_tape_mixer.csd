@@ -36,7 +36,7 @@
 	f 3 0 16384 27 0 1 8192 -1 16384 1
 	f 4 0 16384 27 0 1 8191 1 8192 -1 16384 -1
 	
-	i 1 0 $length "$prefix1.wav" "$prefix2.wav" "$prefix3.wav" "$prefix4.wav" [1.0/$th] 1 [1.0/$ph] 1
+	i 1 0 $length "$prefix.1.wav" "$prefix.2.wav" "$prefix.3.wav" "$prefix.4.wav" [1.0/$th] 1 [1.0/$ph] 1
              
 	e
 </CsScore>
