@@ -68,20 +68,25 @@ endop
 ; ---------------------------
 ; Chord interval pool & per-group root note storage
 ; ---------------------------
-; Consonant intervals only: unison, P4, P5, octave
+; Voice intervals: unison, tritone, major sixth, octave
 giIntervals ftgen 0, 0, -4, -2,  0, 6, 9, 12
 
-; Forte set class 5-31A.01 [1,2,4,7,10]
-giScaleDegrees ftgen 0, 0, -5, -2,  1, 2, 4, 7, 10
+; Group-root pitch classes. Launchers can override this orchestra macro.
+; Default: 5-31A transposed +1 semitone, preserving [1,2,4,7,10].
+#ifndef PITCH_CLASSES
+#define PITCH_CLASSES #1, 2, 4, 7, 10#
+#endif
+; GEN02 size 0 derives the table length from the supplied pitch classes.
+giScaleDegrees ftgen 0, 0, 0, -2, $PITCH_CLASSES
 
-; Table to hold 8 random root MIDI notes (filled by instr 99)
+; Table to hold 8 related root MIDI notes (filled by instr 99)
 giGroupRoots ftgen 0, 0, -8, -2,  0, 0, 0, 0, 0, 0, 0, 0
 
 ; ---------------------------
 ; Instrument 99: Initialization
 ; Picks one random tonic, applies random transposition (-6 to +6),
-; then assigns group roots from 5-35 pentatonic built on that tonic.
-; Groups are spread across 2 octaves for range.
+; then assigns group roots from the selected pitch-class list.
+; Repeating the list adds an octave each time, keeping 8 groups.
 ; ---------------------------
 instr 99
     seed p4
@@ -95,9 +100,9 @@ instr 99
     iScaleLen = ftlen(giScaleDegrees)
     iIdx = 0
     while (iIdx < 8) do
-        ; Pick a 5-35 degree (cycle through with octave shifts)
+        ; Cycle through the selected list with octave shifts.
         iDegIdx = iIdx % iScaleLen
-        iOctShift = int(iIdx / iScaleLen) * 12  ; +12 for groups 6-8
+        iOctShift = int(iIdx / iScaleLen) * 12
         iDegree table iDegIdx, giScaleDegrees
         iRoot = iTonic + iDegree + iOctShift
         tableiw iRoot, iIdx, giGroupRoots
@@ -145,7 +150,7 @@ instr 1
     ; Read this group's root note from the pre-computed table
     iGroupRoot table iInstance - 1, giGroupRoots
     ; Bass voices (octave 0) always play the root for harmonic anchoring
-    ; Upper voices pick a consonant interval (P4, P5, or octave)
+    ; Upper voices pick from the fixed interval pool (0, 6, 9, 12).
     if (iOctaveOff == 0) then
         iInterval = 0
     else
@@ -352,10 +357,10 @@ instr 2
     kFCrawl2 jspline 1, 0.004, 0.025
     kFCrawl3 jspline 1, 0.002, 0.015
 
-    ; 8 comb filters tuned to musical pitches from the pentatonic scale
-    ; Each corner uses a different scale degree + octave for variety
+    ; 8 comb filters retain their original tuning offsets from group 1.
+    ; Selecting a pitch-class set changes group roots, not these offsets.
     ; Delay times derived from MIDI notes for musical resonance
-    ; Feedback (resonance) varies per filter for timbral contrast
+    ; Decay time varies per filter for timbral contrast
 
     ; Read the root for comb tuning reference
     iCombRoot table 0, giGroupRoots
@@ -499,12 +504,12 @@ endin
 ; f1 = sine wave table
 f1 0 16384 10 1
 
-; Initialize 8 random root notes (runs once, then turns off)
+; Initialize 8 related root notes (runs once, then turns off)
 i99 0 0.01 __SEED__
 
 ; 8 drone groups × 4 voices = 32 voices → meta vec8
 ; p1=instr p2=start p3=dur p4=morph p5=seed p6=group(1-8) p7=octaveOff p8=cutoffMult
-; Each group gets its own random root note; each voice picks a random chord interval
+; Group roots follow the selected pitch classes; upper voices pick fixed-pool intervals.
 
 ; Group 1 (vec8 corner -1,-1,-1)
 i1 0.02 __DURATION__ 0.1  10001 1  0  0.5

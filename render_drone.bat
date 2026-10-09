@@ -2,10 +2,12 @@
 setlocal enabledelayedexpansion
 
 :: Render a vectorial evolving drone to WAV file
-:: Usage: render_drone.bat [duration] [output_file]
+:: Usage: render_drone.bat [duration] [output_file] [pitch_set] [seed]
+if /i "%~1"=="--help" goto help
+if /i "%~1"=="--list-sets" goto list
+if not "%~5"=="" goto help
 
-set TEMPLATE=evolving_drone_template.csd
-set TMPFILE=%TEMP%\drone_render_%RANDOM%.csd
+set "TMPFILE=%TEMP%\drone_render_%RANDOM%_%RANDOM%.csd"
 
 :: Duration in seconds (default 600 = 10 minutes)
 if "%~1"=="" (
@@ -23,30 +25,31 @@ if "%~2"=="" (
     set OUTFILE=%~2
 )
 
-:: Generate random seed
-set /a SEED=%RANDOM% * 32768 + %RANDOM%
+:: Select root pitch classes and optional reproducible seed.
+set "PITCH_SET=5-31A.01"
+if not "%~3"=="" set "PITCH_SET=%~3"
+set "SEED=%~4"
 
 echo ============================================
 echo   Meta-Vectorial Evolving Drone - Render to WAV
 echo ============================================
-echo Duration: %DURATION% seconds
-echo Seed:     %SEED%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0prepare_drone.ps1" -Duration "%DURATION%" -PitchSet "%PITCH_SET%" -Seed "%SEED%" -OutputPath "%TMPFILE%"
+if errorlevel 1 exit /b 1
 echo Output:   %OUTFILE%
 echo.
 echo 8 drone groups x 4 voices = 32 total voices
-echo Each group: random root note + random chord
+echo Group roots follow the selected pitch-class set
 echo Ultra-slow chaotic vec8 morphing between groups
 echo ============================================
 echo.
 
-:: Create temporary CSD file with substituted values
-powershell -Command "(Get-Content '%TEMPLATE%') -replace '__DURATION__', '%DURATION%' -replace '__SEED__', '%SEED%' | Set-Content '%TMPFILE%'"
-
 :: Render to WAV file
 csound -o "%OUTFILE%" "%TMPFILE%"
+set "CSOUND_STATUS=!ERRORLEVEL!"
 
 :: Cleanup
 del "%TMPFILE%" 2>nul
+if not "%CSOUND_STATUS%"=="0" exit /b %CSOUND_STATUS%
 
 :: Normalize to -14 LUFS using ffmpeg (if available)
 where ffmpeg >nul 2>&1
@@ -56,8 +59,15 @@ if !ERRORLEVEL! equ 0 (
     set NORMFILE=%OUTFILE:.wav=_normalized.wav%
     ffmpeg -hide_banner -loglevel warning -i "%OUTFILE%" -af loudnorm=I=-14:TP=-1:LRA=11:print_format=summary -y "!NORMFILE!" 2>&1
     if !ERRORLEVEL! equ 0 (
-        move /y "!NORMFILE!" "%OUTFILE%" >nul
-        echo Normalized to -14 LUFS: %OUTFILE%
+        set "DRONE_NORMALIZED_PATH=!NORMFILE!"
+        set "DRONE_OUTPUT_PATH=%OUTFILE%"
+        powershell -NoProfile -Command "Move-Item -LiteralPath $env:DRONE_NORMALIZED_PATH -Destination $env:DRONE_OUTPUT_PATH -Force -ErrorAction Stop"
+        if !ERRORLEVEL! equ 0 (
+            echo Normalized to -14 LUFS: %OUTFILE%
+        ) else (
+            echo WARNING: Could not replace the WAV with its normalized version, keeping the original render.
+            del "!NORMFILE!" 2>nul
+        )
     ) else (
         echo WARNING: ffmpeg normalization failed, keeping original render.
         del "!NORMFILE!" 2>nul
@@ -70,3 +80,19 @@ if !ERRORLEVEL! equ 0 (
 
 echo.
 echo Render complete: %OUTFILE%
+exit /b 0
+
+:list
+if "%~2"=="" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0prepare_drone.ps1" -ListSets
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0prepare_drone.ps1" -ListSets -Cardinality "%~2"
+)
+exit /b %ERRORLEVEL%
+
+:help
+echo Usage: render_drone.bat [duration] [output_file] [pitch_set] [seed]
+echo Default: 600 seconds, generated filename, 5-31A.01, random seed
+echo Example: render_drone.bat 600 "pentatonic.wav" 5-35 12345
+echo List sets: render_drone.bat --list-sets 5
+exit /b 0
